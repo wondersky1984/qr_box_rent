@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.*
+dist
+coverage
+.prisma
+.tmp
+.idea
+.DS_Store
+logs
+*.log

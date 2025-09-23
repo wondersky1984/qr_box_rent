@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  MANAGER
+  ADMIN
+}
+
+enum LockerStatus {
+  FREE
+  HELD
+  OCCUPIED
+  FROZEN
+  OUT_OF_ORDER
+}
+
+enum TariffCode {
+  HOURLY
+  DAILY
+}
+
+enum OrderStatus {
+  DRAFT
+  AWAITING_PAYMENT
+  PAID
+  CANCELED
+}
+
+enum OrderItemStatus {
+  CREATED
+  AWAITING_PAYMENT
+  ACTIVE
+  EXPIRED
+  CLOSED
+}
+
+enum PaymentStatus {
+  CREATED
+  SUCCEEDED
+  CANCELED
+}
+
+enum ActorType {
+  USER
+  MANAGER
+  ADMIN
+  SYSTEM
+}
+
+enum AuditAction {
+  LOCKER_OPEN
+  LOCKER_FREEZE
+  LOCKER_UNFREEZE
+  RENTAL_CREATE
+  PAYMENT_CREATE
+  PAYMENT_SUCCEEDED
+  RENTAL_EXTEND
+  AUTH_LOGIN
+}
+
+model User {
+  id            String         @id @default(uuid())
+  phone         String         @unique
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  orders        Order[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]     @relation("userAuditLogs")
+}
+
+model Locker {
+  id           String        @id @default(uuid())
+  number       Int           @unique
+  status       LockerStatus  @default(FREE)
+  deviceId     String?
+  freezeUntil  DateTime?
+  freezeReason String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  orderItems   OrderItem[]
+  auditLogs    AuditLog[]    @relation("lockerAuditLogs")
+}
+
+model Tariff {
+  id              String     @id @default(uuid())
+  code            TariffCode @unique
+  name            String
+  priceRub        Int
+  durationMinutes Int
+  active          Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  orderItems      OrderItem[]
+}
+
+model Order {
+  id        String        @id @default(uuid())
+  user      User          @relation(fields: [userId], references: [id])
+  userId    String
+  status    OrderStatus   @default(DRAFT)
+  totalRub  Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  items     OrderItem[]
+  payments  Payment[]
+  auditLogs AuditLog[]    @relation("orderAuditLogs")
+  @@index([userId, status])
+}
+
+model OrderItem {
+  id         String          @id @default(uuid())
+  order      Order           @relation(fields: [orderId], references: [id])
+  orderId    String
+  locker     Locker          @relation(fields: [lockerId], references: [id])
+  lockerId   String
+  tariff     Tariff          @relation(fields: [tariffId], references: [id])
+  tariffId   String
+  status     OrderItemStatus @default(CREATED)
+  startAt    DateTime?
+  endAt      DateTime?
+  holdUntil  DateTime?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  auditLogs  AuditLog[]      @relation("orderItemAuditLogs")
+  @@index([lockerId])
+  @@index([status])
+  @@index([orderId, status])
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  order       Order         @relation(fields: [orderId], references: [id])
+  orderId     String
+  ykPaymentId String?       @unique
+  amountRub   Int
+  status      PaymentStatus @default(CREATED)
+  payload     Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  auditLogs   AuditLog[]    @relation("paymentAuditLogs")
+}
+
+model AuditLog {
+  id          String     @id @default(uuid())
+  timestamp   DateTime   @default(now())
+  actorType   ActorType
+  actorId     String?
+  action      AuditAction
+  locker      Locker?    @relation("lockerAuditLogs", fields: [lockerId], references: [id])
+  lockerId    String?
+  order       Order?     @relation("orderAuditLogs", fields: [orderId], references: [id])
+  orderId     String?
+  orderItem   OrderItem? @relation("orderItemAuditLogs", fields: [orderItemId], references: [id])
+  orderItemId String?
+  payment     Payment?   @relation("paymentAuditLogs", fields: [paymentId], references: [id])
+  paymentId   String?
+  user        User?      @relation("userAuditLogs", fields: [userId], references: [id])
+  userId      String?
+  phone       String?
+  ip          String?
+  userAgent   String?
+  metadata    Json?
+  @@index([timestamp])
+  @@index([action])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model OtpRequest {
+  id         String   @id @default(uuid())
+  phone      String
+  code       String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+  consumedAt DateTime?
+  @@index([phone])
+}
