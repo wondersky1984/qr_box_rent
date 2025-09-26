@@ -20,13 +20,21 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   render() {
-    if (this.state.error) {
+    const { error } = this.state;
+    if (error) {
+      const message = error.message || String(error);
+      const stack = error.stack;
       return (
         <div className="min-h-screen bg-slate-950 text-red-300 flex flex-col items-center justify-center gap-4 p-6 text-center">
           <h1 className="text-2xl font-semibold">Что-то пошло не так 😔</h1>
-          <p className="max-w-xl text-sm text-red-200/80">
-            {this.state.error.message || 'Неизвестная ошибка. Проверьте консоль браузера для подробностей.'}
+          <p className="max-w-xl text-sm text-red-200/80 whitespace-pre-wrap break-words">
+            {message || 'Неизвестная ошибка. Проверьте консоль браузера для подробностей.'}
           </p>
+          {stack && (
+            <pre className="max-w-3xl overflow-x-auto text-xs text-red-300/70 text-left bg-red-900/10 p-4 rounded">
+              {stack}
+            </pre>
+          )}
         </div>
       );
     }
