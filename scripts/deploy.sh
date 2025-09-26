@@ -29,6 +29,9 @@ fi
 echo "[deploy] Running migrations..."
 docker compose exec -T app npx prisma migrate deploy || docker compose exec -T app npx prisma db push
 
+echo "[deploy] Seeding baseline data..."
+docker compose exec -T app npm run seed:prod || true
+
 echo "[deploy] Pruning old images (optional)"
 if [ "${DEPLOY_PRUNE:-false}" = "true" ]; then
   docker system prune -af
