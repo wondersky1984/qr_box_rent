@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchRentals, extendRental, settleRental } from '../services/rentals';
 import { fetchTariffs } from '../services/tariffs';
 import { openLocker } from '../services/lockers';
+import { payOrder, confirmMock } from '../services/orders';
 import { useAuthStore } from '../store/authStore';
 import { Rental, Tariff } from '../types';
 import { toast } from '../components/ui/useToast';
 
+const MOCK_PAYMENTS = import.meta.env.VITE_MOCK_PAYMENTS === 'true';
+
 export const RentalsPage = () => {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -51,14 +55,34 @@ export const RentalsPage = () => {
     onError: () => toast.error('Не удалось создать оплату задолженности'),
   });
 
+  const payAwaitingMutation = useMutation({
+    mutationFn: (orderId: string) => payOrder(orderId),
+    onSuccess: (data) => {
+      window.location.href = data.confirmationUrl;
+    },
+    onError: () => toast.error('Не удалось перейти к оплате'),
+  });
+
+  const confirmAwaitingMockMutation = useMutation({
+    mutationFn: (orderId: string) => confirmMock(orderId),
+    onSuccess: () => {
+      toast.success('Оплата подтверждена (mock)');
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    },
+    onError: () => toast.error('Не удалось подтвердить оплату'),
+  });
+
   if (!user) {
     return <p className="text-sm text-slate-400">Авторизуйтесь, чтобы увидеть активные аренды.</p>;
   }
 
   const rentals = rentalsQuery.data ?? [];
   const tariffs = tariffsQuery.data ?? [];
+  const awaitingRentals = rentals.filter((rental) => rental.status === 'AWAITING_PAYMENT');
   const activeRentals = rentals.filter((rental) => rental.status === 'ACTIVE');
-  const pastRentals = rentals.filter((rental) => rental.status !== 'ACTIVE');
+  const pastRentals = rentals.filter(
+    (rental) => rental.status !== 'ACTIVE' && rental.status !== 'AWAITING_PAYMENT',
+  );
 
   const handleOpen = (rental: Rental) => {
     if (rental.outstandingRub > 0) {
@@ -87,10 +111,37 @@ export const RentalsPage = () => {
     settleMutation.mutate(rental.id);
   };
 
+  const handlePayAwaiting = (rental: Rental) => {
+    payAwaitingMutation.mutate(rental.orderId);
+  };
+
+  const handleConfirmAwaitingMock = (rental: Rental) => {
+    confirmAwaitingMockMutation.mutate(rental.orderId);
+  };
+
   return (
     <div className="space-y-8">
       <section>
-        <h1 className="text-2xl font-semibold">Активные аренды</h1>
+        <h1 className="text-2xl font-semibold">Ожидают оплаты</h1>
+        <p className="text-sm text-slate-400">Завершите оплату, чтобы активировать аренду.</p>
+        <div className="mt-4 space-y-3">
+          {awaitingRentals.length === 0 && <p className="text-sm text-slate-500">Нет неоплаченных броней.</p>}
+          {awaitingRentals.map((rental) => (
+            <AwaitingRentalCard
+              key={rental.id}
+              rental={rental}
+              tariffs={tariffs}
+              onPay={() => handlePayAwaiting(rental)}
+              onMock={MOCK_PAYMENTS ? () => handleConfirmAwaitingMock(rental) : undefined}
+              isPaying={payAwaitingMutation.isPending}
+              isMocking={confirmAwaitingMockMutation.isPending}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-semibold">Активные аренды</h2>
         <p className="text-sm text-slate-400">
           Здесь отображаются все ячейки, доступные вам для открытия.
         </p>
@@ -122,6 +173,61 @@ export const RentalsPage = () => {
           ))}
         </div>
       </section>
+    </div>
+  );
+};
+
+const AwaitingRentalCard = ({
+  rental,
+  tariffs,
+  onPay,
+  onMock,
+  isPaying,
+  isMocking,
+}: {
+  rental: Rental;
+  tariffs: Tariff[];
+  onPay: () => void;
+  onMock?: () => void;
+  isPaying: boolean;
+  isMocking: boolean;
+}) => {
+  const tariff = tariffs.find((tar) => tar.id === rental.tariffId);
+
+  return (
+    <div className="rounded border border-amber-400/40 bg-amber-500/5 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1 text-sm">
+          <div className="text-lg font-semibold text-amber-200">Ячейка #{rental.locker?.number ?? '??'}</div>
+          <div className="text-slate-300">
+            Тариф: {tariff?.name ?? '—'} · {tariff ? `${tariff.priceRub} ₽` : '—'}
+          </div>
+          <div className="text-xs uppercase text-amber-300">{formatStatus(rental.status)}</div>
+          {rental.holdUntil && (
+            <div className="text-xs text-slate-400">
+              Бронь до: {new Date(rental.holdUntil).toLocaleString('ru-RU')}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            className="rounded bg-amber-400 px-4 py-2 text-sm font-semibold text-amber-950 hover:bg-amber-300 disabled:opacity-50"
+            onClick={onPay}
+            disabled={isPaying}
+          >
+            Оплатить
+          </button>
+          {onMock && (
+            <button
+              className="rounded border border-amber-400 px-4 py-2 text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
+              onClick={onMock}
+              disabled={isMocking}
+            >
+              Симулировать оплату
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
@@ -207,12 +313,15 @@ const RentalHistoryCard = ({ rental }: { rental: Rental }) => {
     <div className="rounded border border-slate-800 bg-slate-900/40 p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-medium">Ячейка #{rental.locker?.number ?? '??'}</span>
-        <span className="text-xs uppercase text-slate-500">{rental.status}</span>
+        <span className="text-xs uppercase text-slate-500">{formatStatus(rental.status)}</span>
       </div>
       <div className="mt-2 text-slate-400">
         {rental.startAt && <span>Начало: {new Date(rental.startAt).toLocaleString('ru-RU')}</span>}
         {rental.endAt && <span className="ml-4">Конец: {new Date(rental.endAt).toLocaleString('ru-RU')}</span>}
       </div>
+      {rental.overdueRub > 0 && (
+        <div className="mt-2 text-xs text-amber-400">Доплата: {formatCurrency(rental.overdueRub)}</div>
+      )}
     </div>
   );
 };
@@ -225,4 +334,21 @@ const formatDuration = (ms: number) => {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} осталось`;
+};
+
+const formatStatus = (status: Rental['status']) => {
+  switch (status) {
+    case 'ACTIVE':
+      return 'АКТИВНА';
+    case 'AWAITING_PAYMENT':
+      return 'ОЖИДАЕТ ОПЛАТЫ';
+    case 'CREATED':
+      return 'СОЗДАНО';
+    case 'EXPIRED':
+      return 'ЗАВЕРШЕНО';
+    case 'CLOSED':
+      return 'ЗАКРЫТО';
+    default:
+      return status;
+  }
 };

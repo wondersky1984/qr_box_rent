@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { UserSession } from '../types';
 import { refreshSession, logout } from '../services/auth';
-import { setAuthHeader } from '../services/api';
+import { registerAuthHandlers } from '../services/api';
 
 interface AuthState {
   user: UserSession | null;
@@ -42,3 +42,8 @@ export const useAuthStore = create<AuthState>()(
     },
   ),
 );
+
+registerAuthHandlers({
+  refresh: () => useAuthStore.getState().restoreSession(),
+  clear: () => useAuthStore.getState().setUser(null),
+});

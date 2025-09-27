@@ -20,6 +20,7 @@ export interface Tariff {
 
 export interface OrderItem {
   id: string;
+  orderId: string;
   lockerId: string;
   tariffId: string;
   status: 'CREATED' | 'AWAITING_PAYMENT' | 'ACTIVE' | 'EXPIRED' | 'CLOSED';
