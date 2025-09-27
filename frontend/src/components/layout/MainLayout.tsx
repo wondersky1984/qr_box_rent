@@ -25,7 +25,7 @@ export const MainLayout = () => {
     { to: '/', label: 'Аренда' },
     { to: '/rentals', label: 'Мои ячейки' },
     { to: '/manager/lockers', label: 'Менеджер', roles: ['MANAGER', 'ADMIN'] },
-    { to: '/admin/audit', label: 'Админ', roles: ['ADMIN'] },
+    { to: '/admin/lockers', label: 'Админ', roles: ['ADMIN'] },
   ];
 
   return (
@@ -42,7 +42,7 @@ export const MainLayout = () => {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`hover:text-white ${location.pathname === link.to ? 'text-white' : ''}`}
+                  className={`hover:text-white ${location.pathname.startsWith(link.to) ? 'text-white' : ''}`}
                 >
                   {link.label}
                 </Link>

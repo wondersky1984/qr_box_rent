@@ -1,11 +1,12 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import { Prisma, TariffCode, OrderItemStatus } from '@prisma/client';
+import { Prisma, TariffCode, OrderItemStatus, ActorType } from '@prisma/client';
 import { PaymentsService } from '../payments/payments.service';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { ExtendRentalDto } from './dto/extend-rental.dto';
 import dayjs from 'dayjs';
 import { LockersService } from '../lockers/lockers.service';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class RentalsService {
@@ -14,6 +15,7 @@ export class RentalsService {
     private readonly paymentsService: PaymentsService,
     private readonly tariffsService: TariffsService,
     private readonly lockersService: LockersService,
+    private readonly auditService: AuditService,
   ) {}
 
   async getUserRentals(userId: string) {
@@ -130,6 +132,15 @@ export class RentalsService {
     }
 
     await this.lockersService.markFree(orderItemId);
+
+    await this.auditService.createLog({
+      actorType: ActorType.USER,
+      actorId: userId,
+      action: 'LOCKER_OPEN',
+      lockerId: item.lockerId,
+      orderItemId: item.id,
+      metadata: { source: 'USER_COMPLETE' },
+    });
 
     return { success: true };
   }

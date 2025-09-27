@@ -9,6 +9,9 @@ export const ManagerLockersPage = () => {
   const { user } = useAuthStore();
   const [reason, setReason] = useState('');
   const [until, setUntil] = useState('');
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [freezingId, setFreezingId] = useState<string | null>(null);
+  const [unfreezingId, setUnfreezingId] = useState<string | null>(null);
 
   const lockersQuery = useQuery({
     queryKey: ['manager-lockers'],
@@ -18,24 +21,35 @@ export const ManagerLockersPage = () => {
 
   const openMutation = useMutation({
     mutationFn: (lockerId: string) => managerOpenLocker(lockerId),
-    onSuccess: () => toast.success('Команда отправлена'),
+    onMutate: (lockerId) => {
+      setOpeningId(lockerId);
+    },
+    onSuccess: () => {
+      toast.success('Команда отправлена');
+      lockersQuery.refetch();
+    },
+    onSettled: () => setOpeningId(null),
   });
 
   const freezeMutation = useMutation({
     mutationFn: ({ lockerId, data }: { lockerId: string; data: { until?: string; reason?: string } }) =>
       managerFreezeLocker(lockerId, data),
+    onMutate: ({ lockerId }) => setFreezingId(lockerId),
     onSuccess: () => {
       toast.success('Ячейка заморожена');
       lockersQuery.refetch();
     },
+    onSettled: () => setFreezingId(null),
   });
 
   const unfreezeMutation = useMutation({
     mutationFn: (lockerId: string) => managerUnfreezeLocker(lockerId),
+    onMutate: (lockerId) => setUnfreezingId(lockerId),
     onSuccess: () => {
       toast.success('Ячейка разморожена');
       lockersQuery.refetch();
     },
+    onSettled: () => setUnfreezingId(null),
   });
 
   if (!user || (user.role !== 'MANAGER' && user.role !== 'ADMIN')) {
@@ -57,6 +71,9 @@ export const ManagerLockersPage = () => {
               freezeMutation.mutate({ lockerId: locker.id, data: { until: until || undefined, reason: reason || undefined } })
             }
             onUnfreeze={() => unfreezeMutation.mutate(locker.id)}
+            isOpening={openingId === locker.id && openMutation.isPending}
+            isFreezing={freezingId === locker.id && freezeMutation.isPending}
+            isUnfreezing={unfreezingId === locker.id && unfreezeMutation.isPending}
           />
         ))}
       </div>
@@ -89,21 +106,55 @@ export const ManagerLockersPage = () => {
   );
 };
 
-const ManagerLockerRow = ({ locker, onOpen, onFreeze, onUnfreeze }: { locker: Locker; onOpen: () => void; onFreeze: () => void; onUnfreeze: () => void }) => {
+const ManagerLockerRow = ({
+  locker,
+  onOpen,
+  onFreeze,
+  onUnfreeze,
+  isOpening,
+  isFreezing,
+  isUnfreezing,
+}: {
+  locker: Locker;
+  onOpen: () => void;
+  onFreeze: () => void;
+  onUnfreeze: () => void;
+  isOpening: boolean;
+  isFreezing: boolean;
+  isUnfreezing: boolean;
+}) => {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-800 bg-slate-900/50 p-4">
       <div>
         <div className="text-base font-semibold">#{locker.number.toString().padStart(2, '0')}</div>
         <div className="text-xs uppercase text-slate-400">{locker.status}</div>
+        {locker.freezeUntil && (
+          <div className="text-xs text-amber-300">
+            До {new Date(locker.freezeUntil).toLocaleString('ru-RU')}
+            {locker.freezeReason ? ` · ${locker.freezeReason}` : ''}
+          </div>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button className="rounded bg-emerald-500 px-3 py-1 text-xs font-semibold text-emerald-950 hover:bg-emerald-400" onClick={onOpen}>
+        <button
+          className="rounded bg-emerald-500 px-3 py-1 text-xs font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
+          onClick={onOpen}
+          disabled={isOpening}
+        >
           Открыть
         </button>
-        <button className="rounded border border-amber-500 px-3 py-1 text-xs font-semibold text-amber-400 hover:bg-amber-500/10" onClick={onFreeze}>
+        <button
+          className="rounded border border-amber-500 px-3 py-1 text-xs font-semibold text-amber-400 hover:bg-amber-500/10 disabled:opacity-50"
+          onClick={onFreeze}
+          disabled={isFreezing}
+        >
           Заморозить
         </button>
-        <button className="rounded border border-slate-500 px-3 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-700/40" onClick={onUnfreeze}>
+        <button
+          className="rounded border border-slate-500 px-3 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-700/40 disabled:opacity-50"
+          onClick={onUnfreeze}
+          disabled={isUnfreezing}
+        >
           Разморозить
         </button>
       </div>

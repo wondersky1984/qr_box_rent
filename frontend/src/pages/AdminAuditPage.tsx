@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchAuditLogs, exportAuditCsv, AuditQuery } from '../services/admin';
 import { useAuthStore } from '../store/authStore';
 import { toast } from '../components/ui/useToast';
+import { AdminTabs } from '../components/admin/AdminTabs';
 
 export const AdminAuditPage = () => {
   const { user } = useAuthStore();
@@ -37,8 +38,9 @@ export const AdminAuditPage = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <div className="space-y-2">
           <h1 className="text-2xl font-semibold">Аудит</h1>
+          <AdminTabs activePath="/admin/audit" />
           <p className="text-sm text-slate-400">История событий по ячейкам, платежам и авторизациям.</p>
         </div>
         <button className="rounded border border-slate-600 px-4 py-2 text-sm hover:bg-slate-800" onClick={downloadCsv}>
