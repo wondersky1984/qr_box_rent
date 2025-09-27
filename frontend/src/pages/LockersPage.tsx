@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchLockers } from '../services/lockers';
@@ -30,6 +30,8 @@ export const LockersPage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOnlyFree, setShowOnlyFree] = useState(false);
   const [search, setSearch] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+  const cartRef = useRef<HTMLDivElement | null>(null);
 
   const { data: lockers, refetch: refetchLockers } = useQuery({
     queryKey: ['lockers'],
@@ -82,6 +84,15 @@ export const LockersPage = () => {
     const hourly = tariffs.find((tariff) => tariff.code === 'HOURLY' && tariff.active);
     return (hourly ?? tariffs[0]).id;
   }, [tariffs]);
+
+  useEffect(() => {
+    const updateIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    return () => window.removeEventListener('resize', updateIsMobile);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -203,8 +214,12 @@ export const LockersPage = () => {
     }, 0);
   }, [order, selectedLockerIds, lockerTariffs, tariffs, defaultTariffId]);
 
+  const handleCartButtonClick = () => {
+    cartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-20 sm:pb-0">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Выбор ячеек</h1>
@@ -247,7 +262,10 @@ export const LockersPage = () => {
           </div>
         </section>
 
-        <aside className="sticky top-16 flex h-fit flex-col gap-4 rounded border border-slate-800 bg-slate-900/60 p-6">
+        <aside
+          ref={cartRef}
+          className="sticky top-16 flex h-fit flex-col gap-4 rounded border border-slate-800 bg-slate-900/60 p-6"
+        >
           <h2 className="text-lg font-semibold">Корзина</h2>
           <div className="space-y-3">
             {selectedLockerIds.length === 0 && <p className="text-sm text-slate-400">Вы ещё не выбрали ячейки.</p>}
@@ -331,7 +349,17 @@ export const LockersPage = () => {
         </aside>
       </div>
 
-      <AuthDialog open={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={handleAuthSuccess} />
+     <AuthDialog open={showAuthModal} onClose={() => setShowAuthModal(false)} onSuccess={handleAuthSuccess} />
+      {isMobile && (
+        <button
+          className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-emerald-950 shadow-lg transition hover:bg-emerald-400 disabled:opacity-60 disabled:hover:bg-emerald-500 sm:hidden"
+          onClick={handleCartButtonClick}
+          disabled={selectedLockerIds.length === 0}
+        >
+          <span>Корзина</span>
+          <span>{total} ₽</span>
+        </button>
+      )}
     </div>
   );
 };

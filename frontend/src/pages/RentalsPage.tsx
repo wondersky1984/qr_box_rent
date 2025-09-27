@@ -32,10 +32,16 @@ export const RentalsPage = () => {
     enabled: Boolean(user),
   });
 
+  const [openingLockerId, setOpeningLockerId] = useState<string | null>(null);
+
   const openMutation = useMutation({
     mutationFn: (lockerId: string) => openLocker(lockerId),
+    onMutate: (lockerId) => {
+      setOpeningLockerId(lockerId);
+    },
     onSuccess: () => toast.success('Команда на открытие отправлена'),
     onError: () => toast.error('Не удалось открыть ячейку'),
+    onSettled: () => setOpeningLockerId(null),
   });
 
   const extendMutation = useMutation({
@@ -170,7 +176,7 @@ export const RentalsPage = () => {
               onExtend={() => handleExtend(rental)}
               onSettle={() => handleSettle(rental)}
               onComplete={() => handleComplete(rental)}
-              isOpenLoading={openMutation.isPending}
+              isOpenLoading={openMutation.isPending && openingLockerId === rental.lockerId}
               isExtendLoading={extendMutation.isPending}
               isSettleLoading={settleMutation.isPending}
               isCompleteLoading={completeMutation.isPending}
