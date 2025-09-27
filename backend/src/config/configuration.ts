@@ -52,8 +52,6 @@ export default registerAs<AppConfig>('app', () => ({
     staticPassword: process.env.STATIC_LOGIN_PASSWORD ?? '1234',
   },
   cookies: {
-    secure:
-      process.env.COOKIE_SECURE === 'true' ||
-      (process.env.COOKIE_SECURE !== 'false' && (process.env.BASE_URL ?? '').startsWith('https://')),
+    secure: process.env.COOKIE_SECURE === 'true',
   },
 }));
