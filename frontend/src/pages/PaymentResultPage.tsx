@@ -1,8 +1,36 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { confirmPayment } from '../services/payments';
+import { toast } from '../components/ui/useToast';
 
 export const PaymentResultPage = () => {
   const { status } = useParams();
   const success = status === 'success';
+  const [searchParams] = useSearchParams();
+  const paymentId = searchParams.get('paymentId');
+  const queryClient = useQueryClient();
+  const triggeredRef = useRef(false);
+
+  const { mutate: confirmPaymentMutate, isPending: isProcessing } = useMutation({
+    mutationFn: (id: string) => confirmPayment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    },
+    onError: () => {
+      toast.error('Не удалось подтвердить оплату');
+    },
+  });
+
+  useEffect(() => {
+    if (!success || triggeredRef.current) return;
+    triggeredRef.current = true;
+    if (paymentId) {
+      confirmPaymentMutate(paymentId);
+    } else {
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    }
+  }, [success, paymentId, confirmPaymentMutate, queryClient]);
 
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded border border-slate-800 bg-slate-900/40 p-8 text-center">
@@ -11,7 +39,9 @@ export const PaymentResultPage = () => {
       </div>
       <p className="text-sm text-slate-400">
         {success
-          ? 'Вы можете открыть арендованные ячейки на странице «Мои ячейки».'
+          ? isProcessing
+            ? 'Подтверждаем оплату, подождите...'
+            : 'Вы можете открыть арендованные ячейки на странице «Мои ячейки».'
           : 'Попробуйте повторить оплату или выберите другой способ.'}
       </p>
       <div className="flex gap-4">

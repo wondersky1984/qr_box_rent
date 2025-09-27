@@ -4,9 +4,10 @@ import { RentalsService } from './rentals.service';
 import { RentalsController } from './rentals.controller';
 import { PaymentsModule } from '../payments/payments.module';
 import { TariffsModule } from '../tariffs/tariffs.module';
+import { LockersModule } from '../lockers/lockers.module';
 
 @Module({
-  imports: [PrismaModule, PaymentsModule, TariffsModule],
+  imports: [PrismaModule, PaymentsModule, TariffsModule, LockersModule],
   providers: [RentalsService],
   controllers: [RentalsController],
   exports: [RentalsService],

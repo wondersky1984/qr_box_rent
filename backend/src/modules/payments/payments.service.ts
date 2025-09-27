@@ -1,4 +1,12 @@
-import { forwardRef, Inject, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
@@ -112,6 +120,29 @@ export class PaymentsService {
     await this.ordersService.handlePaymentSuccess(payment.id);
 
     return payment;
+  }
+
+  async confirmPaymentForUser(paymentId: string, userId: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: {
+        order: true,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Платёж не найден');
+    }
+
+    if (!payment.order || payment.order.userId !== userId) {
+      throw new ForbiddenException();
+    }
+
+    if (payment.status === 'SUCCEEDED') {
+      return payment;
+    }
+
+    return this.markPaymentSucceeded(payment.id, { confirmedBy: userId, source: 'USER_CONFIRM' });
   }
 
   async handleWebhook(dto: PaymentsWebhookDto, signature?: string) {

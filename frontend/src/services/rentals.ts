@@ -15,3 +15,7 @@ export const settleRental = async (id: string) => {
   const { data } = await api.post(`/order-items/${id}/settle`);
   return data as { confirmationUrl: string; paymentId: string };
 };
+
+export const completeRental = async (id: string) => {
+  await api.post(`/order-items/${id}/complete`);
+};

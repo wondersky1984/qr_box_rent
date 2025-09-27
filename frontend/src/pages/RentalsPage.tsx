@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchRentals, extendRental, settleRental } from '../services/rentals';
+import { fetchRentals, extendRental, settleRental, completeRental } from '../services/rentals';
 import { fetchTariffs } from '../services/tariffs';
 import { openLocker } from '../services/lockers';
 import { payOrder, confirmMock } from '../services/orders';
@@ -53,6 +53,15 @@ export const RentalsPage = () => {
       window.location.href = data.confirmationUrl;
     },
     onError: () => toast.error('Не удалось создать оплату задолженности'),
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (rentalId: string) => completeRental(rentalId),
+    onSuccess: () => {
+      toast.success('Ячейка освобождена');
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    },
+    onError: () => toast.error('Не удалось освободить ячейку'),
   });
 
   const payAwaitingMutation = useMutation({
@@ -111,6 +120,10 @@ export const RentalsPage = () => {
     settleMutation.mutate(rental.id);
   };
 
+  const handleComplete = (rental: Rental) => {
+    completeMutation.mutate(rental.id);
+  };
+
   const handlePayAwaiting = (rental: Rental) => {
     payAwaitingMutation.mutate(rental.orderId);
   };
@@ -156,9 +169,11 @@ export const RentalsPage = () => {
               onOpen={() => handleOpen(rental)}
               onExtend={() => handleExtend(rental)}
               onSettle={() => handleSettle(rental)}
+              onComplete={() => handleComplete(rental)}
               isOpenLoading={openMutation.isPending}
               isExtendLoading={extendMutation.isPending}
               isSettleLoading={settleMutation.isPending}
+              isCompleteLoading={completeMutation.isPending}
             />
           ))}
         </div>
@@ -239,9 +254,11 @@ const RentalCard = ({
   onOpen,
   onExtend,
   onSettle,
+  onComplete,
   isOpenLoading,
   isExtendLoading,
   isSettleLoading,
+  isCompleteLoading,
 }: {
   rental: Rental;
   now: number;
@@ -249,9 +266,11 @@ const RentalCard = ({
   onOpen: () => void;
   onExtend: () => void;
   onSettle: () => void;
+  onComplete: () => void;
   isOpenLoading: boolean;
   isExtendLoading: boolean;
   isSettleLoading: boolean;
+  isCompleteLoading: boolean;
 }) => {
   const endTime = rental.endAt ? new Date(rental.endAt).getTime() : null;
   const remainingMs = endTime ? endTime - now : 0;
@@ -293,6 +312,15 @@ const RentalCard = ({
               disabled={isSettleLoading}
             >
               Оплатить долг
+            </button>
+          )}
+          {rental.status === 'ACTIVE' && (
+            <button
+              className="rounded border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+              onClick={onComplete}
+              disabled={isCompleteLoading || rental.outstandingRub > 0}
+            >
+              Освободить
             </button>
           )}
           <button

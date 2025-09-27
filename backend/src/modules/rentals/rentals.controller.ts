@@ -23,4 +23,9 @@ export class RentalsController {
   settle(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
     return this.rentalsService.settleOverdue(id, user.userId);
   }
+
+  @Post('order-items/:id/complete')
+  complete(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    return this.rentalsService.completeRental(id, user.userId);
+  }
 }

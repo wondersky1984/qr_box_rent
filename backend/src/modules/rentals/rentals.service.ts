@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import { Prisma, TariffCode } from '@prisma/client';
+import { Prisma, TariffCode, OrderItemStatus } from '@prisma/client';
 import { PaymentsService } from '../payments/payments.service';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { ExtendRentalDto } from './dto/extend-rental.dto';
 import dayjs from 'dayjs';
+import { LockersService } from '../lockers/lockers.service';
 
 @Injectable()
 export class RentalsService {
@@ -12,6 +13,7 @@ export class RentalsService {
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
     private readonly tariffsService: TariffsService,
+    private readonly lockersService: LockersService,
   ) {}
 
   async getUserRentals(userId: string) {
@@ -109,6 +111,27 @@ export class RentalsService {
     };
 
     return this.paymentsService.createPayment(item.orderId, overdueRub, userId, metadata);
+  }
+
+  async completeRental(orderItemId: string, userId: string) {
+    const item = await this.prisma.orderItem.findUnique({
+      where: { id: orderItemId },
+      include: { order: true },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Аренда не найдена');
+    }
+    if (item.order.userId !== userId) {
+      throw new ForbiddenException();
+    }
+    if (item.status !== OrderItemStatus.ACTIVE && item.status !== OrderItemStatus.EXPIRED) {
+      throw new BadRequestException('Ячейка не активна');
+    }
+
+    await this.lockersService.markFree(orderItemId);
+
+    return { success: true };
   }
 
   private async refreshExpiredRentals() {
