@@ -107,10 +107,11 @@ export class AuthService {
   attachAuthCookies(res: Response, accessToken: string, refreshToken: string) {
     const accessTtl = parseDurationMs(this.configService.get('app.jwt.accessTtl'), 15 * 60 * 1000);
     const refreshTtl = parseDurationMs(this.configService.get('app.jwt.refreshTtl'), 30 * 24 * 60 * 60 * 1000);
+    const secureCookies = this.configService.get<boolean>('app.cookies.secure');
     const cookieOptions = {
       httpOnly: true,
       sameSite: 'lax' as const,
-      secure: this.configService.get('NODE_ENV') === 'production',
+      secure: secureCookies,
       path: '/',
     };
     res.cookie('lockbox_access', accessToken, { ...cookieOptions, maxAge: accessTtl });

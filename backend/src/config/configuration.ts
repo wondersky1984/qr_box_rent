@@ -23,6 +23,9 @@ type AppConfig = {
   auth: {
     staticPassword: string;
   };
+  cookies: {
+    secure: boolean;
+  };
 };
 
 export default registerAs<AppConfig>('app', () => ({
@@ -47,5 +50,10 @@ export default registerAs<AppConfig>('app', () => ({
   },
   auth: {
     staticPassword: process.env.STATIC_LOGIN_PASSWORD ?? '1234',
+  },
+  cookies: {
+    secure:
+      process.env.COOKIE_SECURE === 'true' ||
+      (process.env.COOKIE_SECURE !== 'false' && (process.env.BASE_URL ?? '').startsWith('https://')),
   },
 }));
