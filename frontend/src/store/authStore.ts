@@ -27,7 +27,12 @@ export const useAuthStore = create<AuthState>()(
           set({ user, loading: false });
           return user;
         } catch (error) {
-          set({ user: null, loading: false });
+          const currentUser = get().user;
+          if (!currentUser) {
+            set({ user: null, loading: false });
+          } else {
+            set({ loading: false });
+          }
           return null;
         }
       },
