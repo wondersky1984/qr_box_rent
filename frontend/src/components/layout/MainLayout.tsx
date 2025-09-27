@@ -1,12 +1,15 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useCartStore } from '../../store/cartStore';
-import { useEffect } from 'react';
+import { AuthDialog } from '../auth/AuthDialog';
 
 export const MainLayout = () => {
   const location = useLocation();
   const { user, restoreSession, signOut } = useAuthStore();
   const resetCart = useCartStore((state) => state.reset);
+  const [authOpen, setAuthOpen] = useState(false);
+  const appVersion = import.meta.env.VITE_APP_VERSION ?? 'dev';
 
   useEffect(() => {
     restoreSession();
@@ -54,7 +57,15 @@ export const MainLayout = () => {
                 </button>
               </>
             ) : (
-              <span className="text-xs text-slate-500">Гость</span>
+              <>
+                <span className="text-xs text-slate-500">Гость</span>
+                <button
+                  className="rounded border border-emerald-500 px-3 py-1 text-xs uppercase text-emerald-400 hover:bg-emerald-500/10"
+                  onClick={() => setAuthOpen(true)}
+                >
+                  Войти
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -62,6 +73,13 @@ export const MainLayout = () => {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <Outlet />
       </main>
+      <footer className="border-t border-slate-800 bg-slate-950/80">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3 text-xs text-slate-500">
+          <span>LockBox</span>
+          <span>Версия: {appVersion}</span>
+        </div>
+      </footer>
+      <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} onSuccess={() => setAuthOpen(false)} />
     </div>
   );
 };
