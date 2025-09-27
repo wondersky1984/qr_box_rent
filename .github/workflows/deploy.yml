@@ -13,6 +13,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+     
+      
+      - name: Prepare SSH key
+        run: |
+          echo "${{ secrets.DEPLOY_SSH_KEY_B64 }}" | base64 -d > /tmp/github_actions_deploy
+          chmod 600 /tmp/github_actions_deploy
 
       - name: Run remote deploy script
         uses: appleboy/ssh-action@v0.1.10
@@ -20,10 +26,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           port: ${{ secrets.DEPLOY_PORT }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          key_path: /tmp/github_actions_deploy
           script: |
             export DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
-            export DEPLOY_BRANCH="main"
-            export DEPLOY_NO_CACHE="${{ secrets.DEPLOY_NO_CACHE }}"
-            export DEPLOY_PRUNE="${{ secrets.DEPLOY_PRUNE }}"
             bash "$DEPLOY_PATH/scripts/deploy.sh"
