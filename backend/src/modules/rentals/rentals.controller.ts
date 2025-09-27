@@ -18,4 +18,9 @@ export class RentalsController {
   extend(@Param('id') id: string, @CurrentUser() user: { userId: string }, @Body() dto: ExtendRentalDto) {
     return this.rentalsService.extendRental(id, user.userId, dto);
   }
+
+  @Post('order-items/:id/settle')
+  settle(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
+    return this.rentalsService.settleOverdue(id, user.userId);
+  }
 }

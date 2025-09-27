@@ -20,6 +20,9 @@ type AppConfig = {
   lockers: {
     holdMinutes: number;
   };
+  auth: {
+    staticPassword: string;
+  };
 };
 
 export default registerAs<AppConfig>('app', () => ({
@@ -41,5 +44,8 @@ export default registerAs<AppConfig>('app', () => ({
   },
   lockers: {
     holdMinutes: parseInt(process.env.LOCKER_HOLD_MINUTES ?? '10', 10),
+  },
+  auth: {
+    staticPassword: process.env.STATIC_LOGIN_PASSWORD ?? '1234',
   },
 }));

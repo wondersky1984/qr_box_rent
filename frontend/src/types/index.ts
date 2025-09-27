@@ -37,7 +37,13 @@ export interface Order {
   items: OrderItem[];
 }
 
-export interface Rental extends OrderItem {}
+export interface Rental extends OrderItem {
+  paidRub: number;
+  accruedRub: number;
+  outstandingRub: number;
+  overdueMinutes: number;
+  overdueRub: number;
+}
 
 export interface AuditLog {
   id: string;

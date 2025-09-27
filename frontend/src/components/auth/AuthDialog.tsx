@@ -1,8 +1,7 @@
 import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { startOtp, verifyOtp } from '../../services/auth';
+import { login } from '../../services/auth';
 import { useAuthStore } from '../../store/authStore';
-import { toast } from '../ui/useToast';
 
 interface AuthDialogProps {
   open: boolean;
@@ -11,17 +10,15 @@ interface AuthDialogProps {
 }
 
 export const AuthDialog = ({ open, onClose, onSuccess }: AuthDialogProps) => {
-  const [step, setStep] = useState<'phone' | 'verify'>('phone');
   const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setUser = useAuthStore((state) => state.setUser);
 
   const resetState = () => {
-    setStep('phone');
     setPhone('');
-    setCode('');
+    setPassword('');
     setError(null);
     setLoading(false);
   };
@@ -31,30 +28,16 @@ export const AuthDialog = ({ open, onClose, onSuccess }: AuthDialogProps) => {
     onClose();
   };
 
-  const handleStartOtp = async () => {
+  const handleLogin = async () => {
     try {
       setLoading(true);
       setError(null);
-      await startOtp(phone);
-      setStep('verify');
-      toast.info('Код отправлен, введите его ниже');
-    } catch (err) {
-      setError('Не удалось отправить код. Попробуйте ещё раз.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerify = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const user = await verifyOtp(phone, code);
+      const user = await login(phone, password);
       setUser(user);
       onSuccess();
       handleClose();
     } catch (err) {
-      setError('Неверный код');
+      setError('Неверный номер или пароль');
     } finally {
       setLoading(false);
     }
@@ -91,37 +74,33 @@ export const AuthDialog = ({ open, onClose, onSuccess }: AuthDialogProps) => {
                   Вход по телефону
                 </Dialog.Title>
                 <div className="mt-4 space-y-4">
-                  {step === 'phone' && (
-                    <div className="space-y-3">
-                      <label className="block text-sm text-slate-300" htmlFor="phone">
-                        Номер телефона
-                      </label>
-                      <input
-                        id="phone"
-                        type="tel"
-                        value={phone}
-                        onChange={(event) => setPhone(event.target.value)}
-                        placeholder="+7 (___) ___-__-__"
-                        className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring focus:ring-emerald-500"
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-3">
+                    <label className="block text-sm text-slate-300" htmlFor="phone">
+                      Номер телефона
+                    </label>
+                    <input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
+                      placeholder="+7 (___) ___-__-__"
+                      className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring focus:ring-emerald-500"
+                    />
+                  </div>
 
-                  {step === 'verify' && (
-                    <div className="space-y-3">
-                      <label className="block text-sm text-slate-300" htmlFor="code">
-                        Код из SMS
-                      </label>
-                      <input
-                        id="code"
-                        type="text"
-                        value={code}
-                        onChange={(event) => setCode(event.target.value)}
-                        placeholder="1234"
-                        className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring focus:ring-emerald-500"
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-3">
+                    <label className="block text-sm text-slate-300" htmlFor="password">
+                      Пароль (по умолчанию 1234)
+                    </label>
+                    <input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="1234"
+                      className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring focus:ring-emerald-500"
+                    />
+                  </div>
 
                   {error && <p className="text-sm text-rose-400">{error}</p>}
                 </div>
@@ -134,26 +113,14 @@ export const AuthDialog = ({ open, onClose, onSuccess }: AuthDialogProps) => {
                   >
                     Отмена
                   </button>
-                  {step === 'phone' && (
-                    <button
-                      type="button"
-                      className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
-                      onClick={handleStartOtp}
-                      disabled={loading || phone.length < 10}
-                    >
-                      Получить код
-                    </button>
-                  )}
-                  {step === 'verify' && (
-                    <button
-                      type="button"
-                      className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
-                      onClick={handleVerify}
-                      disabled={loading || code.length < 4}
-                    >
-                      Подтвердить
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
+                    onClick={handleLogin}
+                    disabled={loading || phone.length < 10 || password.length === 0}
+                  >
+                    Войти
+                  </button>
                 </div>
               </Dialog.Panel>
             </Transition.Child>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { fetchRentals, extendRental } from '../services/rentals';
+import { fetchRentals, extendRental, settleRental } from '../services/rentals';
 import { fetchTariffs } from '../services/tariffs';
 import { openLocker } from '../services/lockers';
 import { useAuthStore } from '../store/authStore';
@@ -43,6 +43,14 @@ export const RentalsPage = () => {
     onError: () => toast.error('Не удалось создать продление'),
   });
 
+  const settleMutation = useMutation({
+    mutationFn: (rentalId: string) => settleRental(rentalId),
+    onSuccess: (data) => {
+      window.location.href = data.confirmationUrl;
+    },
+    onError: () => toast.error('Не удалось создать оплату задолженности'),
+  });
+
   if (!user) {
     return <p className="text-sm text-slate-400">Авторизуйтесь, чтобы увидеть активные аренды.</p>;
   }
@@ -53,6 +61,10 @@ export const RentalsPage = () => {
   const pastRentals = rentals.filter((rental) => rental.status !== 'ACTIVE');
 
   const handleOpen = (rental: Rental) => {
+    if (rental.outstandingRub > 0) {
+      toast.error('Сначала погасите задолженность');
+      return;
+    }
     openMutation.mutate(rental.lockerId);
   };
 
@@ -69,6 +81,10 @@ export const RentalsPage = () => {
       return;
     }
     extendMutation.mutate({ rentalId: rental.id, tariffId: tariff.id });
+  };
+
+  const handleSettle = (rental: Rental) => {
+    settleMutation.mutate(rental.id);
   };
 
   return (
@@ -88,6 +104,10 @@ export const RentalsPage = () => {
               tariffs={tariffs}
               onOpen={() => handleOpen(rental)}
               onExtend={() => handleExtend(rental)}
+              onSettle={() => handleSettle(rental)}
+              isOpenLoading={openMutation.isPending}
+              isExtendLoading={extendMutation.isPending}
+              isSettleLoading={settleMutation.isPending}
             />
           ))}
         </div>
@@ -112,16 +132,25 @@ const RentalCard = ({
   tariffs,
   onOpen,
   onExtend,
+  onSettle,
+  isOpenLoading,
+  isExtendLoading,
+  isSettleLoading,
 }: {
   rental: Rental;
   now: number;
   tariffs: Tariff[];
   onOpen: () => void;
   onExtend: () => void;
+  onSettle: () => void;
+  isOpenLoading: boolean;
+  isExtendLoading: boolean;
+  isSettleLoading: boolean;
 }) => {
   const endTime = rental.endAt ? new Date(rental.endAt).getTime() : null;
   const remainingMs = endTime ? endTime - now : 0;
   const tariff = tariffs.find((tar) => tar.id === rental.tariffId);
+  const canOpen = rental.outstandingRub <= 0;
 
   return (
     <div className="rounded border border-slate-800 bg-slate-900/60 p-4">
@@ -134,17 +163,36 @@ const RentalCard = ({
           {endTime && (
             <div className="text-sm text-emerald-400">{remainingMs > 0 ? formatDuration(remainingMs) : 'Время истекло'}</div>
           )}
+          <div className="mt-2 space-y-1 text-sm text-slate-300">
+            {rental.startAt && <div>Начало: {new Date(rental.startAt).toLocaleString('ru-RU')}</div>}
+            <div>Оплачено: {formatCurrency(rental.paidRub)}</div>
+            <div>Накопилось: {formatCurrency(rental.accruedRub)}</div>
+            {rental.outstandingRub > 0 && (
+              <div className="text-amber-400">Задолженность: {formatCurrency(rental.outstandingRub)}</div>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
             onClick={onOpen}
+            disabled={!canOpen || isOpenLoading}
           >
             Открыть
           </button>
+          {rental.outstandingRub > 0 && (
+            <button
+              className="rounded border border-amber-400 px-4 py-2 text-sm text-amber-300 hover:bg-amber-500/10 disabled:opacity-50"
+              onClick={onSettle}
+              disabled={isSettleLoading}
+            >
+              Оплатить долг
+            </button>
+          )}
           <button
             className="rounded border border-emerald-500 px-4 py-2 text-sm text-emerald-400 hover:bg-emerald-500/10"
             onClick={onExtend}
+            disabled={isExtendLoading}
           >
             Продлить
           </button>
@@ -168,6 +216,8 @@ const RentalHistoryCard = ({ rental }: { rental: Rental }) => {
     </div>
   );
 };
+
+const formatCurrency = (value: number) => `${value.toLocaleString('ru-RU')} ₽`;
 
 const formatDuration = (ms: number) => {
   if (ms <= 0) return '00:00';

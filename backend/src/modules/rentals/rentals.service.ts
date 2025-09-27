@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, TariffCode } from '@prisma/client';
 import { PaymentsService } from '../payments/payments.service';
 import { TariffsService } from '../tariffs/tariffs.service';
 import { ExtendRentalDto } from './dto/extend-rental.dto';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class RentalsService {
@@ -21,12 +22,27 @@ export class RentalsService {
       include: {
         locker: true,
         tariff: true,
-        order: true,
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return rentals;
+    return Promise.all(
+      rentals.map(async (item) => {
+        const meta = await this.calculateOverdueMeta(item.id);
+        const basePriceRub = item.tariff?.priceRub ?? 0;
+        const accruedRub = basePriceRub + meta.overdueRub;
+        const paidRub = basePriceRub;
+        const outstandingRub = Math.max(0, accruedRub - paidRub);
+        return {
+          ...item,
+          overdueMinutes: meta.overdueMinutes,
+          overdueRub: meta.overdueRub,
+          paidRub,
+          accruedRub,
+          outstandingRub,
+        };
+      }),
+    );
   }
 
   async extendRental(orderItemId: string, userId: string, dto: ExtendRentalDto) {
@@ -65,12 +81,45 @@ export class RentalsService {
     return { confirmationUrl, paymentId: payment.id };
   }
 
+  async settleOverdue(orderItemId: string, userId: string) {
+    const item = await this.prisma.orderItem.findUnique({
+      where: { id: orderItemId },
+      include: {
+        order: true,
+      },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Аренда не найдена');
+    }
+    if (item.order.userId !== userId) {
+      throw new ForbiddenException();
+    }
+
+    const { overdueRub, extendMinutes } = await this.calculateOverdueMeta(orderItemId);
+    if (overdueRub <= 0 || extendMinutes <= 0) {
+      throw new BadRequestException('Задолженность отсутствует');
+    }
+
+    const metadata = {
+      orderId: item.orderId,
+      settleOrderItemId: item.id,
+      extendMinutes,
+      type: 'OVERDUE_SETTLEMENT',
+    };
+
+    return this.paymentsService.createPayment(item.orderId, overdueRub, userId, metadata);
+  }
+
   private async refreshExpiredRentals() {
     const now = new Date();
     const expired = await this.prisma.orderItem.findMany({
       where: {
         status: 'ACTIVE',
         endAt: { lt: now },
+      },
+      include: {
+        locker: true,
       },
     });
 
@@ -86,5 +135,46 @@ export class RentalsService {
         data: { status: 'FREE' },
       });
     });
+  }
+
+  private async calculateOverdueMeta(orderItemId: string) {
+    const item = await this.prisma.orderItem.findUnique({
+      where: { id: orderItemId },
+      include: {
+        tariff: true,
+      },
+    });
+
+    if (!item || !item.endAt) {
+      return { overdueMinutes: 0, overdueRub: 0, extendMinutes: 0 };
+    }
+
+    const now = dayjs();
+    const endAt = dayjs(item.endAt);
+
+    if (now.isBefore(endAt)) {
+      return { overdueMinutes: 0, overdueRub: 0, extendMinutes: 0 };
+    }
+
+    const diffMinutes = Math.ceil(now.diff(endAt, 'minute', true));
+    if (diffMinutes <= 0) {
+      return { overdueMinutes: 0, overdueRub: 0, extendMinutes: 0 };
+    }
+
+    const tariff = item.tariff ?? (await this.getHourlyTariff());
+    const ratePerMinute = tariff.priceRub / tariff.durationMinutes;
+    const multiplier = Math.max(1, Math.ceil(diffMinutes / tariff.durationMinutes));
+    const extendMinutes = multiplier * tariff.durationMinutes;
+    const overdueRub = Math.ceil(extendMinutes * ratePerMinute);
+
+    return { overdueMinutes: diffMinutes, overdueRub, extendMinutes };
+  }
+
+  private async getHourlyTariff() {
+    const hourly = await this.prisma.tariff.findFirst({ where: { code: TariffCode.HOURLY } });
+    if (!hourly) {
+      throw new BadRequestException('Почасовой тариф не настроен');
+    }
+    return hourly;
   }
 }

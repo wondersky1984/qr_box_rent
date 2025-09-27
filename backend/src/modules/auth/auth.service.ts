@@ -20,6 +20,22 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
+  async login(phoneRaw: string, password: string) {
+    const phone = this.normalizePhone(phoneRaw);
+    const staticPassword = this.configService.get<string>('app.auth.staticPassword') ?? '1234';
+    if (password !== staticPassword) {
+      throw new UnauthorizedException('Неверный пароль');
+    }
+
+    const user = await this.prisma.user.upsert({
+      where: { phone },
+      update: {},
+      create: { phone },
+    });
+
+    return this.createSession(user);
+  }
+
   async startOtp(phoneRaw: string) {
     const phone = this.normalizePhone(phoneRaw);
     const since = dayjs().subtract(this.otpRateLimitMinutes, 'minute').toDate();
@@ -85,18 +101,7 @@ export class AuthService {
       create: { phone },
     });
 
-    const tokens = await this.issueTokens(user.id, user.role, phone);
-
-    await this.prisma.auditLog.create({
-      data: {
-        actorType: user.role as any,
-        actorId: user.id,
-        action: 'AUTH_LOGIN',
-        phone,
-      },
-    });
-
-    return { user: { id: user.id, phone: user.phone, role: user.role }, ...tokens };
+    return this.createSession(user);
   }
 
   attachAuthCookies(res: Response, accessToken: string, refreshToken: string) {
@@ -178,5 +183,20 @@ export class AuthService {
     });
 
     return { accessToken, refreshToken };
+  }
+
+  private async createSession(user: { id: string; phone: string; role: Role }) {
+    const tokens = await this.issueTokens(user.id, user.role, user.phone);
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorType: user.role as any,
+        actorId: user.id,
+        action: 'AUTH_LOGIN',
+        phone: user.phone,
+      },
+    });
+
+    return { user: { id: user.id, phone: user.phone, role: user.role }, ...tokens };
   }
 }

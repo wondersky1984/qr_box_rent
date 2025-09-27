@@ -3,6 +3,7 @@ import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { StartOtpDto } from './dto/start-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/user.decorator';
@@ -10,6 +11,14 @@ import { CurrentUser } from '../../common/decorators/user.decorator';
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('login')
+  @HttpCode(200)
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const { accessToken, refreshToken, user } = await this.authService.login(dto.phone, dto.password);
+    this.authService.attachAuthCookies(res, accessToken, refreshToken);
+    return { user };
+  }
 
   @Post('otp/start')
   async startOtp(@Body() dto: StartOtpDto) {

@@ -1,19 +1,12 @@
 import { api } from './api';
 import { UserSession } from '../types';
 
-type StartOtpResponse = { success: boolean };
-
-type VerifyOtpResponse = { user: UserSession };
+type LoginResponse = { user: UserSession };
 
 type RefreshResponse = { user: UserSession };
 
-export const startOtp = async (phone: string) => {
-  const { data } = await api.post<StartOtpResponse>('/auth/otp/start', { phone });
-  return data;
-};
-
-export const verifyOtp = async (phone: string, code: string) => {
-  const { data } = await api.post<VerifyOtpResponse>('/auth/otp/verify', { phone, code });
+export const login = async (phone: string, password: string) => {
+  const { data } = await api.post<LoginResponse>('/auth/login', { phone, password });
   return data.user;
 };
 
