@@ -43,21 +43,29 @@ export const LockersPage = () => {
     queryFn: fetchTariffs,
   });
 
+  const { data: cartData, refetch: refetchCart } = useQuery({
+    queryKey: ['cart'],
+    queryFn: fetchCart,
+    enabled: !!user,
+  });
+
   const addMutation = useMutation({
     mutationFn: ({ lockerId, tariffId }: { lockerId: string; tariffId?: string }) =>
       addToCart(lockerId, tariffId),
-    onSuccess: (orderResponse) => {
+    onSuccess: async (orderResponse) => {
+      // Принудительно обновляем корзину с сервера
+      await refetchCart();
       syncSelectionWithOrder(orderResponse ?? null);
-      queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
     onError: () => toast.error('Не удалось добавить ячейку в корзину'),
   });
 
   const removeMutation = useMutation({
     mutationFn: (lockerId: string) => removeFromCart(lockerId),
-    onSuccess: (orderResponse) => {
+    onSuccess: async (orderResponse) => {
+      // Принудительно обновляем корзину с сервера
+      await refetchCart();
       syncSelectionWithOrder(orderResponse ?? null);
-      queryClient.invalidateQueries({ queryKey: ['cart'] });
     },
     onError: () => toast.error('Не удалось удалить ячейку из корзины'),
   });
@@ -183,31 +191,24 @@ export const LockersPage = () => {
   const handleAuthSuccess = async () => {
     setShowAuthModal(false);
     toast.success('Вход выполнен');
-    const backendOrder = await fetchCart();
-    syncSelectionWithOrder(backendOrder ?? null);
+    // Обновляем корзину после авторизации
+    await refetchCart();
     refetchLockers();
-    
+
     // Если есть заказ, автоматически переходим к оплате
-    if (backendOrder && backendOrder.items.length > 0) {
+    if (cartData && cartData.items.length > 0) {
       setTimeout(() => {
         handlePay();
       }, 500); // Небольшая задержка для обновления UI
     }
   };
 
-  // Эффект для отслеживания авторизации через кнопку в углу
+  // Эффект для синхронизации корзины при авторизации
   useEffect(() => {
-    if (user) {
-      // Пользователь авторизовался - проверяем корзину на бэкенде
-      fetchCart().then((backendOrder) => {
-        if (backendOrder && backendOrder.items.length > 0) {
-          syncSelectionWithOrder(backendOrder);
-        }
-      }).catch((error) => {
-        console.error('Error fetching cart:', error);
-      });
+    if (user && cartData) {
+      syncSelectionWithOrder(cartData);
     }
-  }, [user, syncSelectionWithOrder]);
+  }, [user, cartData, syncSelectionWithOrder]);
 
   // Удален проблемный useEffect, который вызывал бесконечный цикл
 
