@@ -18,3 +18,7 @@ export const managerFreezeLocker = async (id: string, payload: FreezeLockerDto) 
 export const managerUnfreezeLocker = async (id: string) => {
   await api.post(`/manager/lockers/${id}/unfreeze`);
 };
+
+export const managerReleaseUnpaidLocker = async (id: string) => {
+  await api.post(`/manager/lockers/${id}/release-unpaid`);
+};

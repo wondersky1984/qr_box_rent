@@ -173,6 +173,13 @@ export const LockersPage = () => {
     const backendOrder = await fetchCart();
     syncSelectionWithOrder(backendOrder ?? null);
     refetchLockers();
+    
+    // Если есть заказ, автоматически переходим к оплате
+    if (backendOrder && backendOrder.items.length > 0) {
+      setTimeout(() => {
+        handlePay();
+      }, 500); // Небольшая задержка для обновления UI
+    }
   };
 
   const handleRemove = async (lockerId: string) => {

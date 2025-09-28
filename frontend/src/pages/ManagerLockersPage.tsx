@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { managerLockers, managerOpenLocker, managerFreezeLocker, managerUnfreezeLocker } from '../services/manager';
+import { managerLockers, managerOpenLocker, managerFreezeLocker, managerUnfreezeLocker, managerReleaseUnpaidLocker } from '../services/manager';
 import { useAuthStore } from '../store/authStore';
 import { Locker } from '../types';
 import { toast } from '../components/ui/useToast';
@@ -12,6 +12,7 @@ export const ManagerLockersPage = () => {
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [freezingId, setFreezingId] = useState<string | null>(null);
   const [unfreezingId, setUnfreezingId] = useState<string | null>(null);
+  const [releasingId, setReleasingId] = useState<string | null>(null);
 
   const lockersQuery = useQuery({
     queryKey: ['manager-lockers'],
@@ -52,6 +53,19 @@ export const ManagerLockersPage = () => {
     onSettled: () => setUnfreezingId(null),
   });
 
+  const releaseMutation = useMutation({
+    mutationFn: (lockerId: string) => managerReleaseUnpaidLocker(lockerId),
+    onMutate: (lockerId) => setReleasingId(lockerId),
+    onSuccess: () => {
+      toast.success('Неоплаченные аренды отменены, ячейка освобождена');
+      lockersQuery.refetch();
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Не удалось освободить ячейку');
+    },
+    onSettled: () => setReleasingId(null),
+  });
+
   if (!user || (user.role !== 'MANAGER' && user.role !== 'ADMIN')) {
     return <p className="text-sm text-slate-400">Недостаточно прав.</p>;
   }
@@ -71,9 +85,11 @@ export const ManagerLockersPage = () => {
               freezeMutation.mutate({ lockerId: locker.id, data: { until: until || undefined, reason: reason || undefined } })
             }
             onUnfreeze={() => unfreezeMutation.mutate(locker.id)}
+            onRelease={() => releaseMutation.mutate(locker.id)}
             isOpening={openingId === locker.id && openMutation.isPending}
             isFreezing={freezingId === locker.id && freezeMutation.isPending}
             isUnfreezing={unfreezingId === locker.id && unfreezeMutation.isPending}
+            isReleasing={releasingId === locker.id && releaseMutation.isPending}
           />
         ))}
       </div>
@@ -111,17 +127,21 @@ const ManagerLockerRow = ({
   onOpen,
   onFreeze,
   onUnfreeze,
+  onRelease,
   isOpening,
   isFreezing,
   isUnfreezing,
+  isReleasing,
 }: {
   locker: Locker;
   onOpen: () => void;
   onFreeze: () => void;
   onUnfreeze: () => void;
+  onRelease: () => void;
   isOpening: boolean;
   isFreezing: boolean;
   isUnfreezing: boolean;
+  isReleasing: boolean;
 }) => {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-800 bg-slate-900/50 p-4">
@@ -156,6 +176,13 @@ const ManagerLockerRow = ({
           disabled={isUnfreezing}
         >
           Разморозить
+        </button>
+        <button
+          className="rounded border border-red-500 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+          onClick={onRelease}
+          disabled={isReleasing}
+        >
+          Освободить
         </button>
       </div>
     </div>

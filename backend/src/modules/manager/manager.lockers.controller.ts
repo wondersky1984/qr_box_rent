@@ -70,4 +70,19 @@ export class ManagerLockersController {
     });
     return { success: true };
   }
+
+  @Post(':id/release-unpaid')
+  async releaseUnpaid(
+    @Param('id') lockerId: string,
+    @CurrentUser() user: { userId: string; role: Role },
+    @Req() req: Request,
+  ) {
+    await this.lockersService.releaseUnpaidLocker(lockerId, {
+      actorId: user.userId,
+      actorType: user.role === Role.ADMIN ? ActorType.ADMIN : ActorType.MANAGER,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    return { success: true };
+  }
 }

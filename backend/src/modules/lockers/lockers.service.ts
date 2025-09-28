@@ -16,6 +16,7 @@ export class LockersService {
   async getLockers(filter?: { status?: LockerStatus[]; search?: string }) {
     await this.releaseExpiredHolds();
     await this.releaseExpiredFreezes();
+    await this.refreshExpiredRentals();
     const statusFilter = filter?.status;
     const statuses = statusFilter
       ? Array.isArray(statusFilter)
@@ -231,6 +232,87 @@ export class LockersService {
       action: 'LOCKER_OPEN',
       lockerId,
       metadata: { source: actor.source },
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+  }
+
+  private async refreshExpiredRentals() {
+    const now = new Date();
+    const expired = await this.prisma.orderItem.findMany({
+      where: {
+        status: 'ACTIVE',
+        endAt: { lt: now },
+      },
+      include: {
+        locker: true,
+      },
+    });
+
+    if (!expired.length) return;
+
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.orderItem.updateMany({
+        where: { id: { in: expired.map((item) => item.id) } },
+        data: { status: 'EXPIRED' },
+      });
+      await tx.locker.updateMany({
+        where: { id: { in: expired.map((item) => item.lockerId) } },
+        data: { status: 'FREE' },
+      });
+    });
+  }
+
+  async releaseUnpaidLocker(lockerId: string, actor: { actorId?: string; actorType: ActorType; ip?: string; userAgent?: string }) {
+    // Находим неоплаченные аренды для этой ячейки
+    const unpaidRentals = await this.prisma.orderItem.findMany({
+      where: {
+        lockerId,
+        status: { in: ['AWAITING_PAYMENT', 'ACTIVE'] },
+        order: {
+          status: { in: ['AWAITING_PAYMENT', 'DRAFT'] }
+        }
+      },
+      include: {
+        order: true
+      }
+    });
+
+    if (unpaidRentals.length === 0) {
+      throw new BadRequestException('Нет неоплаченных аренд для этой ячейки');
+    }
+
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Отменяем неоплаченные аренды
+      await tx.orderItem.updateMany({
+        where: { id: { in: unpaidRentals.map(item => item.id) } },
+        data: { status: 'CLOSED' }
+      });
+
+      // Обновляем статус заказов
+      const orderIds = [...new Set(unpaidRentals.map(item => item.orderId))];
+      await tx.order.updateMany({
+        where: { id: { in: orderIds } },
+        data: { status: 'CANCELED' }
+      });
+
+      // Освобождаем ячейку
+      await tx.locker.update({
+        where: { id: lockerId },
+        data: { status: LockerStatus.FREE }
+      });
+    });
+
+    // Логируем действие
+    await this.auditService.createLog({
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      action: 'LOCKER_RELEASE_UNPAID',
+      lockerId,
+      metadata: { 
+        releasedRentals: unpaidRentals.length,
+        orderIds: [...new Set(unpaidRentals.map(item => item.orderId))]
+      },
       ip: actor.ip,
       userAgent: actor.userAgent,
     });
