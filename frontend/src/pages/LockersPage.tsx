@@ -185,14 +185,33 @@ export const LockersPage = () => {
   // Эффект для отслеживания авторизации через кнопку в углу
   useEffect(() => {
     if (user) {
+      console.log('User logged in, checking cart...');
       // Пользователь авторизовался - проверяем корзину на бэкенде
       fetchCart().then((backendOrder) => {
+        console.log('Backend cart:', backendOrder);
+        if (backendOrder && backendOrder.items.length > 0) {
+          console.log('Syncing selection with backend order');
+          syncSelectionWithOrder(backendOrder);
+        }
+      }).catch((error) => {
+        console.error('Error fetching cart:', error);
+      });
+    }
+  }, [user, syncSelectionWithOrder]);
+
+  // Дополнительный эффект для отслеживания изменений в корзине
+  useEffect(() => {
+    if (user && selectedLockerIds.length > 0) {
+      console.log('Selected lockers changed, syncing with backend...');
+      // Есть выбранные ячейки - синхронизируем с бэкендом
+      fetchCart().then((backendOrder) => {
+        console.log('Backend cart after selection:', backendOrder);
         if (backendOrder && backendOrder.items.length > 0) {
           syncSelectionWithOrder(backendOrder);
         }
       });
     }
-  }, [user, syncSelectionWithOrder]);
+  }, [user, selectedLockerIds, syncSelectionWithOrder]);
 
   const handleRemove = async (lockerId: string) => {
     toggleLocker(lockerId);
