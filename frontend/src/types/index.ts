@@ -5,6 +5,7 @@ export interface Locker {
   id: string;
   number: number;
   status: LockerStatus;
+  deviceId?: string | null;
   freezeReason?: string | null;
   freezeUntil?: string | null;
 }
@@ -55,11 +56,18 @@ export interface AuditLog {
     | 'LOCKER_OPEN'
     | 'LOCKER_FREEZE'
     | 'LOCKER_UNFREEZE'
+    | 'LOCKER_CREATE'
+    | 'LOCKER_UPDATE'
+    | 'LOCKER_DELETE'
+    | 'TARIFF_CREATE'
+    | 'TARIFF_UPDATE'
+    | 'TARIFF_DELETE'
     | 'RENTAL_CREATE'
     | 'PAYMENT_CREATE'
     | 'PAYMENT_SUCCEEDED'
     | 'RENTAL_EXTEND'
-    | 'AUTH_LOGIN';
+    | 'AUTH_LOGIN'
+    | 'REPORT_VIEW';
   lockerId?: string | null;
   orderId?: string | null;
   orderItemId?: string | null;
@@ -80,3 +88,5 @@ export interface UserSession {
   phone: string;
   role: Role;
 }
+
+export * from './admin';
