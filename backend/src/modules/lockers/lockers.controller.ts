@@ -18,7 +18,8 @@ export class LockersController {
 
   @Get()
   async list(@Query() query: GetLockersQueryDto) {
-    return this.lockersService.getLockers(query);
+    // Для админов и менеджеров показываем расширенную информацию
+    return this.lockersService.getManagerLockers(query);
   }
 
   @Get(':id')
