@@ -184,16 +184,15 @@ export const LockersPage = () => {
 
   // Эффект для отслеживания авторизации через кнопку в углу
   useEffect(() => {
-    if (user && order && order.items.length > 0) {
-      // Пользователь авторизовался и есть заказ - показываем кнопку оплаты
-      const backendOrder = fetchCart();
-      backendOrder.then((backendOrder) => {
+    if (user) {
+      // Пользователь авторизовался - проверяем корзину на бэкенде
+      fetchCart().then((backendOrder) => {
         if (backendOrder && backendOrder.items.length > 0) {
           syncSelectionWithOrder(backendOrder);
         }
       });
     }
-  }, [user, order, syncSelectionWithOrder]);
+  }, [user, syncSelectionWithOrder]);
 
   const handleRemove = async (lockerId: string) => {
     toggleLocker(lockerId);
