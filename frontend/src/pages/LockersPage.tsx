@@ -222,6 +222,10 @@ export const LockersPage = () => {
         if (backendOrder && backendOrder.items.length > 0) {
           syncSelectionWithOrder(backendOrder);
         }
+        // Не сбрасываем выбор, если API не работает
+      }).catch((error) => {
+        console.error('Error fetching cart:', error);
+        // Не сбрасываем выбор при ошибке API
       });
     }
   }, [user, selectedLockerIds, syncSelectionWithOrder]);
