@@ -137,9 +137,15 @@ export const LockersPage = () => {
 
     const isSelected = selectedLockerIds.includes(locker.id);
     if (isSelected) {
-      toggleLocker(locker.id);
       if (user) {
-        await removeMutation.mutateAsync(locker.id);
+        try {
+          await removeMutation.mutateAsync(locker.id);
+          toggleLocker(locker.id);
+        } catch (error) {
+          toast.error('Не удалось удалить ячейку из корзины');
+        }
+      } else {
+        toggleLocker(locker.id);
       }
     } else {
       const tariffId = lockerTariffs[locker.id] ?? defaultTariffId;
@@ -147,10 +153,17 @@ export const LockersPage = () => {
         toast.error('Нет доступных тарифов');
         return;
       }
-      toggleLocker(locker.id);
-      setTariff(locker.id, tariffId);
       if (user) {
-        await addMutation.mutateAsync({ lockerId: locker.id, tariffId });
+        try {
+          await addMutation.mutateAsync({ lockerId: locker.id, tariffId });
+          toggleLocker(locker.id);
+          setTariff(locker.id, tariffId);
+        } catch (error) {
+          toast.error('Не удалось добавить ячейку в корзину');
+        }
+      } else {
+        toggleLocker(locker.id);
+        setTariff(locker.id, tariffId);
       }
     }
   };

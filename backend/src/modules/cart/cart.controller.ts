@@ -17,6 +17,7 @@ export class CartController {
 
   @Post('add')
   add(@CurrentUser() user: { userId: string }, @Body() dto: AddToCartDto) {
+    console.log('Cart add request:', { userId: user.userId, dto });
     return this.cartService.addToCart(user.userId, dto);
   }
 
