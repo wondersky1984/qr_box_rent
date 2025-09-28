@@ -3,11 +3,13 @@ import { PrismaModule } from '../../core/prisma/prisma.module';
 import { AdminLockersController } from './admin.lockers.controller';
 import { AdminTariffsController } from './admin.tariffs.controller';
 import { AdminReportsController } from './admin.reports.controller';
+import { AdminSettingsController } from './admin.settings.controller';
 import { LockersModule } from '../lockers/lockers.module';
 import { AuditModule } from '../audit/audit.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
-  imports: [PrismaModule, LockersModule, AuditModule],
-  controllers: [AdminLockersController, AdminTariffsController, AdminReportsController],
+  imports: [PrismaModule, LockersModule, AuditModule, SettingsModule],
+  controllers: [AdminLockersController, AdminTariffsController, AdminReportsController, AdminSettingsController],
 })
 export class AdminModule {}

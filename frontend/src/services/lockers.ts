@@ -14,3 +14,7 @@ export const fetchLocker = async (id: string) => {
 export const openLocker = async (id: string) => {
   await api.post(`/lockers/${id}/open`);
 };
+
+export const openAndCompleteLocker = async (id: string) => {
+  await api.post(`/lockers/${id}/open-and-complete`);
+};

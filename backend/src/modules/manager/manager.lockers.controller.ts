@@ -16,7 +16,7 @@ export class ManagerLockersController {
 
   @Get()
   list() {
-    return this.lockersService.getLockers();
+    return this.lockersService.getManagerLockers();
   }
 
   @Post(':id/open')

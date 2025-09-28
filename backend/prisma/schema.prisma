@@ -199,3 +199,11 @@ model OtpRequest {
   consumedAt DateTime?
   @@index([phone])
 }
+
+model Settings {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

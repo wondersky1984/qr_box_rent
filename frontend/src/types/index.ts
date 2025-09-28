@@ -8,6 +8,21 @@ export interface Locker {
   deviceId?: string | null;
   freezeReason?: string | null;
   freezeUntil?: string | null;
+  currentRental?: {
+    id: string;
+    status: string;
+    startAt?: string | null;
+    endAt?: string | null;
+    order: {
+      user: {
+        phone: string;
+      };
+    };
+    tariff: {
+      name: string;
+      code: string;
+    };
+  } | null;
 }
 
 export interface Tariff {

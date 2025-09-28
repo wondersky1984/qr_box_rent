@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchRentals, extendRental, settleRental, completeRental } from '../services/rentals';
 import { fetchTariffs } from '../services/tariffs';
-import { openLocker } from '../services/lockers';
+import { openLocker, openAndCompleteLocker } from '../services/lockers';
 import { payOrder, confirmMock } from '../services/orders';
 import { useAuthStore } from '../store/authStore';
 import { Rental, Tariff } from '../types';
@@ -41,6 +41,19 @@ export const RentalsPage = () => {
     },
     onSuccess: () => toast.success('Команда на открытие отправлена'),
     onError: () => toast.error('Не удалось открыть ячейку'),
+    onSettled: () => setOpeningLockerId(null),
+  });
+
+  const openAndCompleteMutation = useMutation({
+    mutationFn: (lockerId: string) => openAndCompleteLocker(lockerId),
+    onMutate: (lockerId) => {
+      setOpeningLockerId(lockerId);
+    },
+    onSuccess: () => {
+      toast.success('Ячейка открыта и аренда завершена');
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    },
+    onError: () => toast.error('Не удалось открыть и завершить аренду'),
     onSettled: () => setOpeningLockerId(null),
   });
 
@@ -106,6 +119,14 @@ export const RentalsPage = () => {
       return;
     }
     openMutation.mutate(rental.lockerId);
+  };
+
+  const handleOpenAndComplete = (rental: Rental) => {
+    if (rental.outstandingRub > 0) {
+      toast.error('Сначала погасите задолженность');
+      return;
+    }
+    openAndCompleteMutation.mutate(rental.lockerId);
   };
 
   const handleExtend = (rental: Rental) => {
@@ -174,10 +195,12 @@ export const RentalsPage = () => {
               now={now}
               tariffs={tariffs}
               onOpen={() => handleOpen(rental)}
+              onOpenAndComplete={() => handleOpenAndComplete(rental)}
               onExtend={() => handleExtend(rental)}
               onSettle={() => handleSettle(rental)}
               onComplete={() => handleComplete(rental)}
               isOpenLoading={openMutation.isPending && openingLockerId === rental.lockerId}
+              isOpenAndCompleteLoading={openAndCompleteMutation.isPending && openingLockerId === rental.lockerId}
               isExtendLoading={extendMutation.isPending}
               isSettleLoading={settleMutation.isPending}
               isCompleteLoading={completeMutation.isPending}
@@ -198,10 +221,12 @@ export const RentalsPage = () => {
                 now={now}
                 tariffs={tariffs}
                 onOpen={() => handleOpen(rental)}
+                onOpenAndComplete={() => handleOpenAndComplete(rental)}
                 onExtend={() => handleExtend(rental)}
                 onSettle={() => handleSettle(rental)}
                 onComplete={() => handleComplete(rental)}
                 isOpenLoading={openMutation.isPending && openingLockerId === rental.lockerId}
+                isOpenAndCompleteLoading={openAndCompleteMutation.isPending && openingLockerId === rental.lockerId}
                 isExtendLoading={extendMutation.isPending}
                 isSettleLoading={settleMutation.isPending}
                 isCompleteLoading={completeMutation.isPending}
@@ -284,10 +309,12 @@ const RentalCard = ({
   now,
   tariffs,
   onOpen,
+  onOpenAndComplete,
   onExtend,
   onSettle,
   onComplete,
   isOpenLoading,
+  isOpenAndCompleteLoading,
   isExtendLoading,
   isSettleLoading,
   isCompleteLoading,
@@ -296,10 +323,12 @@ const RentalCard = ({
   now: number;
   tariffs: Tariff[];
   onOpen: () => void;
+  onOpenAndComplete: () => void;
   onExtend: () => void;
   onSettle: () => void;
   onComplete: () => void;
   isOpenLoading: boolean;
+  isOpenAndCompleteLoading: boolean;
   isExtendLoading: boolean;
   isSettleLoading: boolean;
   isCompleteLoading: boolean;
@@ -338,6 +367,13 @@ const RentalCard = ({
             disabled={!canOpen || isOpenLoading}
           >
             Открыть
+          </button>
+          <button
+            className="rounded bg-blue-500 px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-blue-400 disabled:opacity-50"
+            onClick={onOpenAndComplete}
+            disabled={!canOpen || isOpenAndCompleteLoading}
+          >
+            Открыть и завершить
           </button>
           {rental.outstandingRub > 0 && (
             <button

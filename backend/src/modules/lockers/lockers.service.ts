@@ -34,6 +34,49 @@ export class LockersService {
     });
   }
 
+  async getManagerLockers(filter?: { status?: LockerStatus[]; search?: string }) {
+    await this.releaseExpiredHolds();
+    await this.releaseExpiredFreezes();
+    await this.refreshExpiredRentals();
+    const statusFilter = filter?.status;
+    const statuses = statusFilter
+      ? Array.isArray(statusFilter)
+        ? statusFilter
+        : [statusFilter]
+      : undefined;
+    const searchNumber = filter?.search ? Number(filter.search) : undefined;
+
+    const lockers = await this.prisma.locker.findMany({
+      where: {
+        status: statuses ? { in: statuses } : undefined,
+        number: searchNumber && !Number.isNaN(searchNumber) ? searchNumber : undefined,
+      },
+      include: {
+        orderItems: {
+          where: {
+            status: { in: ['ACTIVE', 'OVERDUE', 'AWAITING_PAYMENT'] }
+          },
+          include: {
+            order: {
+              include: {
+                user: true
+              }
+            },
+            tariff: true
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      },
+      orderBy: { number: 'asc' },
+    });
+
+    return lockers.map(locker => ({
+      ...locker,
+      currentRental: locker.orderItems[0] || null
+    }));
+  }
+
   async getLocker(id: string) {
     const locker = await this.prisma.locker.findUnique({ where: { id } });
     if (!locker) {
