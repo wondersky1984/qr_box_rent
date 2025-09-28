@@ -16,6 +16,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { TariffsModule } from './modules/tariffs/tariffs.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { LockerDriverModule } from './modules/locker-driver/locker-driver.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './modules/health/health.module';
 
@@ -38,6 +39,7 @@ import { HealthModule } from './modules/health/health.module';
     PrismaModule,
     LockerDriverModule,
     AuditModule,
+    SchedulerModule,
     HealthModule,
     TariffsModule,
     AuthModule,

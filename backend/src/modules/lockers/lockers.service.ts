@@ -280,7 +280,7 @@ export class LockersService {
     });
   }
 
-  private async refreshExpiredRentals() {
+  async refreshExpiredRentals() {
     const now = new Date();
     const expired = await this.prisma.orderItem.findMany({
       where: {
