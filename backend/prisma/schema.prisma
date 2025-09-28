@@ -37,6 +37,7 @@ enum OrderItemStatus {
   CREATED
   AWAITING_PAYMENT
   ACTIVE
+  OVERDUE
   EXPIRED
   CLOSED
 }

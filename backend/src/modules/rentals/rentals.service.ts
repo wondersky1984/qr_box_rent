@@ -143,20 +143,37 @@ export class RentalsService {
       },
       include: {
         locker: true,
+        order: true,
       },
     });
 
     if (!expired.length) return;
 
+    // Разделяем на оплаченные и неоплаченные
+    const paidRentals = expired.filter(item => item.order.status === 'PAID');
+    const unpaidRentals = expired.filter(item => item.order.status !== 'PAID');
+
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.orderItem.updateMany({
-        where: { id: { in: expired.map((item) => item.id) } },
-        data: { status: 'EXPIRED' },
-      });
-      await tx.locker.updateMany({
-        where: { id: { in: expired.map((item) => item.lockerId) } },
-        data: { status: 'FREE' },
-      });
+      // Завершаем только полностью оплаченные аренды
+      if (paidRentals.length > 0) {
+        await tx.orderItem.updateMany({
+          where: { id: { in: paidRentals.map((item) => item.id) } },
+          data: { status: 'EXPIRED' },
+        });
+        await tx.locker.updateMany({
+          where: { id: { in: paidRentals.map((item) => item.lockerId) } },
+          data: { status: 'FREE' },
+        });
+      }
+
+      // Переводим неоплаченные аренды в статус OVERDUE (просроченные, но не завершенные)
+      if (unpaidRentals.length > 0) {
+        await tx.orderItem.updateMany({
+          where: { id: { in: unpaidRentals.map((item) => item.id) } },
+          data: { status: 'OVERDUE' },
+        });
+        // Ячейки остаются занятыми до ручного завершения
+      }
     });
   }
 

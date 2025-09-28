@@ -24,7 +24,7 @@ export interface OrderItem {
   orderId: string;
   lockerId: string;
   tariffId: string;
-  status: 'CREATED' | 'AWAITING_PAYMENT' | 'ACTIVE' | 'EXPIRED' | 'CLOSED';
+  status: 'CREATED' | 'AWAITING_PAYMENT' | 'ACTIVE' | 'OVERDUE' | 'EXPIRED' | 'CLOSED';
   startAt?: string | null;
   endAt?: string | null;
   holdUntil?: string | null;

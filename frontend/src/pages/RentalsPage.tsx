@@ -95,8 +95,9 @@ export const RentalsPage = () => {
   const tariffs = tariffsQuery.data ?? [];
   const awaitingRentals = rentals.filter((rental) => rental.status === 'AWAITING_PAYMENT');
   const activeRentals = rentals.filter((rental) => rental.status === 'ACTIVE');
+  const overdueRentals = rentals.filter((rental) => rental.status === 'OVERDUE');
   const pastRentals = rentals.filter(
-    (rental) => rental.status !== 'ACTIVE' && rental.status !== 'AWAITING_PAYMENT',
+    (rental) => rental.status !== 'ACTIVE' && rental.status !== 'AWAITING_PAYMENT' && rental.status !== 'OVERDUE',
   );
 
   const handleOpen = (rental: Rental) => {
@@ -184,6 +185,31 @@ export const RentalsPage = () => {
           ))}
         </div>
       </section>
+
+      {overdueRentals.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-red-400">Просроченные аренды</h2>
+          <p className="text-sm text-slate-400">Оплатите задолженность и освободите ячейку.</p>
+          <div className="mt-4 space-y-3">
+            {overdueRentals.map((rental) => (
+              <RentalCard
+                key={rental.id}
+                rental={rental}
+                now={now}
+                tariffs={tariffs}
+                onOpen={() => handleOpen(rental)}
+                onExtend={() => handleExtend(rental)}
+                onSettle={() => handleSettle(rental)}
+                onComplete={() => handleComplete(rental)}
+                isOpenLoading={openMutation.isPending && openingLockerId === rental.lockerId}
+                isExtendLoading={extendMutation.isPending}
+                isSettleLoading={settleMutation.isPending}
+                isCompleteLoading={completeMutation.isPending}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="text-lg font-semibold">История</h2>
@@ -292,7 +318,9 @@ const RentalCard = ({
             Тариф: {tariff?.name ?? '—'} · До {rental.endAt ? new Date(rental.endAt).toLocaleString('ru-RU') : '—'}
           </div>
           {endTime && (
-            <div className="text-sm text-emerald-400">{remainingMs > 0 ? formatDuration(remainingMs) : 'Время истекло'}</div>
+            <div className={`text-sm ${rental.status === 'OVERDUE' ? 'text-red-400' : remainingMs > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {rental.status === 'OVERDUE' ? 'Просрочено' : remainingMs > 0 ? formatDuration(remainingMs) : 'Время истекло'}
+            </div>
           )}
           <div className="mt-2 space-y-1 text-sm text-slate-300">
             {rental.startAt && <div>Начало: {new Date(rental.startAt).toLocaleString('ru-RU')}</div>}
@@ -320,7 +348,7 @@ const RentalCard = ({
               Оплатить долг
             </button>
           )}
-          {rental.status === 'ACTIVE' && (
+          {(rental.status === 'ACTIVE' || rental.status === 'OVERDUE') && (
             <button
               className="rounded border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
               onClick={onComplete}
@@ -378,6 +406,8 @@ const formatStatus = (status: Rental['status']) => {
       return 'ОЖИДАЕТ ОПЛАТЫ';
     case 'CREATED':
       return 'СОЗДАНО';
+    case 'OVERDUE':
+      return 'ПРОСРОЧЕНО';
     case 'EXPIRED':
       return 'ЗАВЕРШЕНО';
     case 'CLOSED':
