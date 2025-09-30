@@ -298,12 +298,17 @@ export class OrdersService {
         });
       }
 
-      // Сначала удаляем все OrderItem
+      // Сначала удаляем все платежи
+      await tx.payment.deleteMany({
+        where: { orderId: orderId },
+      });
+
+      // Затем удаляем все OrderItem
       await tx.orderItem.deleteMany({
         where: { orderId: orderId },
       });
 
-      // Затем удаляем заказ
+      // И наконец удаляем заказ
       await tx.order.delete({
         where: { id: orderId },
       });
