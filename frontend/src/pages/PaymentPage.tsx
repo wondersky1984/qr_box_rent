@@ -41,13 +41,11 @@ export const PaymentPage = () => {
     },
     onSuccess: (payment) => {
       if (MOCK_PAYMENTS) {
-        setIsProcessing(true);
-        confirmMock(payment.paymentId).then(() => {
-          toast.success('Оплата прошла успешно!');
-          reset();
-          queryClient.invalidateQueries({ queryKey: ['rentals'] });
-          navigate('/rentals');
-        });
+        // Для mock платежей оплата уже прошла автоматически в payOrder
+        toast.success('Оплата прошла успешно!');
+        reset();
+        queryClient.invalidateQueries({ queryKey: ['rentals'] });
+        navigate('/rentals');
       } else {
         window.location.href = payment.confirmationUrl;
       }

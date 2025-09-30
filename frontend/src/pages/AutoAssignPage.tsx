@@ -42,6 +42,10 @@ export const AutoAssignPage = () => {
   // Мутация для назначения ячейки
   const assignMutation = useMutation({
     mutationFn: async (tariffId: string) => {
+      if (!user) {
+        throw new Error('Необходима авторизация');
+      }
+      
       // Сначала проверяем, есть ли уже заказ в корзине
       try {
         const existingOrder = await fetchCart();
@@ -75,7 +79,11 @@ export const AutoAssignPage = () => {
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Не удалось назначить ячейку');
+      if (error.message === 'Необходима авторизация') {
+        setShowAuthModal(true);
+      } else {
+        toast.error(error.message || 'Не удалось назначить ячейку');
+      }
     },
   });
 

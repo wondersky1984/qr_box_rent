@@ -1,24 +1,21 @@
-import { Body, Controller, Headers, HttpCode, Post, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
-import { PaymentsWebhookDto } from './dto/payments-webhook.dto';
 import { ConfigService } from '@nestjs/config';
 
-@Controller('api/yookassa')
-export class PaymentsController {
+export class TestPaymentDto {
+  amount!: number;
+  description?: string;
+}
+
+@Controller('api/test/yookassa')
+export class YookassaTestController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly configService: ConfigService,
   ) {}
 
-  @Post('webhook')
-  @HttpCode(200)
-  async handleWebhook(@Body() dto: PaymentsWebhookDto, @Headers('x-yookassa-signature') signature?: string) {
-    await this.paymentsService.handleWebhook(dto, signature);
-    return { received: true };
-  }
-
-  @Get('test/config')
-  getTestConfig() {
+  @Get('config')
+  getConfig() {
     return {
       shopId: this.configService.get<string>('app.yookassa.shopId'),
       secretKey: this.configService.get<string>('app.yookassa.secretKey') ? '***configured***' : 'not configured',
@@ -28,16 +25,16 @@ export class PaymentsController {
     };
   }
 
-  @Post('test/create-payment')
-  async createTestPayment(@Body() body: { amount: number; description?: string }) {
+  @Post('create-payment')
+  async createTestPayment(@Body() dto: TestPaymentDto) {
     const orderId = 'test-order-' + Date.now();
     const userId = 'test-user';
-    const metadata = { test: true, description: body.description };
+    const metadata = { test: true, description: dto.description };
 
     try {
       const result = await this.paymentsService.createPayment(
         orderId,
-        body.amount,
+        dto.amount,
         userId,
         metadata,
       );

@@ -40,7 +40,7 @@ export class OrdersService {
       throw new ForbiddenException('Нет доступа к заказу');
     }
 
-    if (order.status !== 'DRAFT') {
+    if (order.status !== 'DRAFT' && order.status !== 'AWAITING_PAYMENT') {
       throw new BadRequestException('Заказ уже обработан');
     }
 
@@ -54,16 +54,18 @@ export class OrdersService {
         // Проверяем доступность ячейки
         await this.lockersService.ensureAvailable(item.lockerId);
         
-        // Обновляем статус элемента заказа
-        await tx.orderItem.update({
-          where: { id: item.id },
-          data: { 
-            status: 'AWAITING_PAYMENT',
-            startAt: new Date(),
-            endAt: new Date(Date.now() + item.tariff.durationMinutes * 60 * 1000),
-            holdUntil: new Date(Date.now() + 10 * 60 * 1000), // 10 минут брони
-          },
-        });
+        // Обновляем статус элемента заказа только если он еще не подготовлен
+        if (item.status !== 'AWAITING_PAYMENT') {
+          await tx.orderItem.update({
+            where: { id: item.id },
+            data: { 
+              status: 'AWAITING_PAYMENT',
+              startAt: new Date(),
+              endAt: new Date(Date.now() + item.tariff.durationMinutes * 60 * 1000),
+              holdUntil: new Date(Date.now() + 10 * 60 * 1000), // 10 минут брони
+            },
+          });
+        }
 
         // Бронируем ячейку
         await tx.locker.update({
@@ -99,10 +101,12 @@ export class OrdersService {
       throw new BadRequestException('Корзина пуста');
     }
 
+    // Проверяем, что заказ подготовлен к оплате
+    if (order.status !== 'AWAITING_PAYMENT') {
+      throw new BadRequestException('Заказ не подготовлен к оплате');
+    }
+
     for (const item of order.items) {
-      if (item.status !== 'AWAITING_PAYMENT') {
-        throw new BadRequestException('Ячейки не забронированы');
-      }
       if (item.holdUntil && dayjs(item.holdUntil).isBefore(dayjs())) {
         await this.lockersService.releaseHold(item.id);
         throw new BadRequestException('Время брони истекло, выберите ячейки заново');
@@ -125,6 +129,11 @@ export class OrdersService {
       where: { id: orderId },
       data: { status: 'AWAITING_PAYMENT' },
     });
+
+    // Для mock платежей автоматически подтверждаем оплату
+    if (this.configService.get('app.yookassa.mockPayments')) {
+      await this.handlePaymentSuccess(payment.id);
+    }
 
     return { confirmationUrl, paymentId: payment.id };
   }

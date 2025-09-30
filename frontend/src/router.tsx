@@ -10,6 +10,7 @@ import { AdminReportsPage } from './pages/AdminReportsPage';
 import { ManagerLockersPage } from './pages/ManagerLockersPage';
 import { AutoAssignPage } from './pages/AutoAssignPage';
 import { PaymentPage } from './pages/PaymentPage';
+import YookassaTestPage from './pages/YookassaTestPage';
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: 'admin/tariffs', element: <AdminTariffsPage /> },
       { path: 'admin/reports', element: <AdminReportsPage /> },
       { path: 'admin/audit', element: <AdminAuditPage /> },
+      { path: 'test/yookassa', element: <YookassaTestPage /> },
     ],
   },
 ]);

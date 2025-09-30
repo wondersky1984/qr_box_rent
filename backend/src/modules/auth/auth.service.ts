@@ -133,23 +133,27 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const tokens = await this.issueTokens(user.id, user.role, user.phone);
+    // Создаем новые токены
+    const payload = { sub: user.id, role: user.role, phone: user.phone };
+    const accessToken = await this.jwtService.signAsync(payload);
+    const newRefreshToken = randomUUID();
+    const refreshTtl = parseDurationMs(this.configService.get('app.jwt.refreshTtl'), 30 * 24 * 60 * 60 * 1000);
+    const refreshExpires = dayjs().add(refreshTtl, 'millisecond').toDate();
 
-    // Сначала удаляем старый refresh token
-    await this.prisma.refreshToken.delete({
+    // Обновляем refresh token в базе данных
+    await this.prisma.refreshToken.update({
       where: { id: saved.id },
-    });
-
-    // Затем создаем новый refresh token
-    await this.prisma.refreshToken.create({
       data: {
-        token: tokens.refreshToken,
-        userId: user.id,
-        expiresAt: dayjs().add(parseDurationMs(this.configService.get('app.jwt.refreshTtl'), 30 * 24 * 60 * 60 * 1000), 'millisecond').toDate(),
+        token: newRefreshToken,
+        expiresAt: refreshExpires,
       },
     });
 
-    return { user: { id: user.id, phone: user.phone, role: user.role }, ...tokens };
+    return { 
+      user: { id: user.id, phone: user.phone, role: user.role }, 
+      accessToken, 
+      refreshToken: newRefreshToken 
+    };
   }
 
   async logout(userId: string, refreshToken?: string) {

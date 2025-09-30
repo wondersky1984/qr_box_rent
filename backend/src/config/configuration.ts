@@ -44,8 +44,8 @@ export default registerAs<AppConfig>('app', () => ({
     shopId: process.env.YOOKASSA_SHOP_ID ?? '',
     secretKey: process.env.YOOKASSA_SECRET_KEY ?? '',
     webhookSecret: process.env.YOOKASSA_WEBHOOK_SECRET,
-    successUrl: `${process.env.BASE_URL ?? 'http://localhost:5173'}/payment/success`,
-    failUrl: `${process.env.BASE_URL ?? 'http://localhost:5173'}/payment/fail`,
+    successUrl: process.env.YOOKASSA_SUCCESS_URL ?? `${process.env.BASE_URL ?? 'http://localhost:8080'}/payment/success`,
+    failUrl: process.env.YOOKASSA_FAIL_URL ?? `${process.env.BASE_URL ?? 'http://localhost:8080'}/payment/fail`,
     mockPayments: process.env.MOCK_PAYMENTS === 'true',
   },
   lockers: {

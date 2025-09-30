@@ -58,6 +58,14 @@ export class PaymentsService {
     const secretKey = this.configService.get<string>('app.yookassa.secretKey');
 
     try {
+      const successUrl = this.configService.get<string>('app.yookassa.successUrl');
+      console.log('🔧 YooKassa config:', {
+        shopId,
+        secretKey: secretKey ? `${secretKey.substring(0, 10)}...` : 'empty',
+        successUrl,
+        apiUrl: this.apiUrl,
+      });
+
       const payload = {
         amount: {
           value: Number(amountRub).toFixed(2),
@@ -66,11 +74,13 @@ export class PaymentsService {
         capture: true,
         confirmation: {
           type: 'redirect',
-          return_url: this.configService.get<string>('app.yookassa.successUrl'),
+          return_url: successUrl,
         },
         description: `LockBox Order ${orderId}`,
         metadata: jsonMetadata,
       };
+
+      console.log('📤 YooKassa payload:', payload);
 
       const response = await axios.post(this.apiUrl, payload, {
         headers: {
@@ -82,6 +92,8 @@ export class PaymentsService {
           password: secretKey ?? '',
         },
       });
+
+      console.log('📥 YooKassa response:', response.data);
 
       const responsePayload = JSON.parse(JSON.stringify(response.data)) as Prisma.InputJsonValue;
 
@@ -95,6 +107,14 @@ export class PaymentsService {
 
       return { payment, confirmationUrl: response.data?.confirmation?.confirmation_url };
     } catch (error) {
+      console.error('❌ YooKassa error:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('❌ YooKassa error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+        });
+      }
       throw new InternalServerErrorException('Не удалось создать платёж');
     }
   }

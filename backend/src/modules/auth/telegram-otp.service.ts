@@ -155,6 +155,11 @@ export class TelegramOtpService {
     } catch (error) {
       console.error('❌ Error sending Telegram message:', error);
       
+      // Если mock режим отключен, выбрасываем ошибку вместо fallback
+      if (process.env.TELEGRAM_MOCK_MODE === 'false') {
+        throw new Error(`Telegram Gateway API недоступен: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      
       // Если не можем подключиться к Telegram API, используем mock режим
       console.log('🔄 Falling back to mock mode due to network issues');
       const mockRequestId = 'mock_' + Date.now();

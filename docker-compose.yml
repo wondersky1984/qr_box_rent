@@ -29,6 +29,7 @@ services:
       BASE_URL: ${BASE_URL:-http://localhost:8080}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       TELEGRAM_ACCESS_TOKEN: AAFACQAA0um8q4sGWSr9WkT1_kUK-6v5qnCYv5_qG5Ccqg
+      TELEGRAM_MOCK_MODE: false
     depends_on:
       db:
         condition: service_healthy
