@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { login } from '../../services/auth';
 import { useAuthStore } from '../../store/authStore';
+import { TelegramOtpForm } from '../TelegramOtpForm';
 
 interface AuthDialogProps {
   open: boolean;
@@ -14,6 +15,7 @@ export const AuthDialog = ({ open, onClose, onSuccess }: AuthDialogProps) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authMethod, setAuthMethod] = useState<'password' | 'telegram'>('password');
   const setUser = useAuthStore((state) => state.setUser);
 
   const resetState = () => {
@@ -21,6 +23,7 @@ export const AuthDialog = ({ open, onClose, onSuccess }: AuthDialogProps) => {
     setPassword('');
     setError(null);
     setLoading(false);
+    setAuthMethod('password');
   };
 
   const handleClose = () => {
@@ -71,57 +74,100 @@ export const AuthDialog = ({ open, onClose, onSuccess }: AuthDialogProps) => {
             >
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-slate-900 p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-white">
-                  Вход по телефону
+                  Вход в систему
                 </Dialog.Title>
-                <div className="mt-4 space-y-4">
-                  <div className="space-y-3">
-                    <label className="block text-sm text-slate-300" htmlFor="phone">
-                      Номер телефона
-                    </label>
-                    <input
-                      id="phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(event) => setPhone(event.target.value)}
-                      placeholder="+7 (___) ___-__-__"
-                      className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring focus:ring-emerald-500"
-                    />
+                
+                {/* Выбор способа авторизации */}
+                <div className="mt-4 mb-6">
+                  <div className="flex rounded-lg bg-slate-800 p-1">
+                    <button
+                      type="button"
+                      className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        authMethod === 'password'
+                          ? 'bg-slate-700 text-white'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      onClick={() => setAuthMethod('password')}
+                    >
+                      Пароль
+                    </button>
+                    <button
+                      type="button"
+                      className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                        authMethod === 'telegram'
+                          ? 'bg-slate-700 text-white'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      onClick={() => setAuthMethod('telegram')}
+                    >
+                      Telegram
+                    </button>
                   </div>
-
-                  <div className="space-y-3">
-                    <label className="block text-sm text-slate-300" htmlFor="password">
-                      Пароль (по умолчанию 1234)
-                    </label>
-                    <input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      placeholder="1234"
-                      className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  {error && <p className="text-sm text-rose-400">{error}</p>}
                 </div>
 
-                <div className="mt-6 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    className="rounded border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
-                    onClick={handleClose}
-                  >
-                    Отмена
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
-                    onClick={handleLogin}
-                    disabled={loading || phone.length < 10 || password.length === 0}
-                  >
-                    Войти
-                  </button>
-                </div>
+                {/* Форма авторизации по паролю */}
+                {authMethod === 'password' && (
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <label className="block text-sm text-slate-300" htmlFor="phone">
+                        Номер телефона
+                      </label>
+                      <input
+                        id="phone"
+                        type="tel"
+                        value={phone}
+                        onChange={(event) => setPhone(event.target.value)}
+                        placeholder="+7 (___) ___-__-__"
+                        className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="block text-sm text-slate-300" htmlFor="password">
+                        Пароль (по умолчанию 1234)
+                      </label>
+                      <input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="1234"
+                        className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    {error && <p className="text-sm text-rose-400">{error}</p>}
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        className="rounded border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+                        onClick={handleClose}
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-emerald-400 disabled:opacity-50"
+                        onClick={handleLogin}
+                        disabled={loading || phone.length < 10 || password.length === 0}
+                      >
+                        Войти
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Форма авторизации через Telegram */}
+                {authMethod === 'telegram' && (
+                  <TelegramOtpForm
+                    onSuccess={() => {
+                      onSuccess();
+                      handleClose();
+                    }}
+                    onCancel={handleClose}
+                  />
+                )}
               </Dialog.Panel>
             </Transition.Child>
           </div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchLockers } from '../services/lockers';
 import { fetchTariffs } from '../services/tariffs';
@@ -15,6 +15,7 @@ const MOCK_PAYMENTS = import.meta.env.VITE_MOCK_PAYMENTS === 'true';
 
 export const LockersPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const {
@@ -56,6 +57,11 @@ export const LockersPage = () => {
       // Принудительно обновляем корзину с сервера
       await refetchCart();
       syncSelectionWithOrder(orderResponse ?? null);
+      // Обновляем UI состояние
+      toggleLocker(orderResponse?.items[0]?.lockerId || '');
+      if (orderResponse?.items[0]?.tariffId) {
+        setTariff(orderResponse.items[0].lockerId, orderResponse.items[0].tariffId);
+      }
     },
     onError: () => toast.error('Не удалось добавить ячейку в корзину'),
   });
@@ -148,7 +154,7 @@ export const LockersPage = () => {
       if (user) {
         try {
           await removeMutation.mutateAsync(locker.id);
-          toggleLocker(locker.id);
+          // toggleLocker и setTariff вызываются в onSuccess мутации
         } catch (error) {
           toast.error('Не удалось удалить ячейку из корзины');
         }
@@ -164,8 +170,7 @@ export const LockersPage = () => {
       if (user) {
         try {
           await addMutation.mutateAsync({ lockerId: locker.id, tariffId });
-          toggleLocker(locker.id);
-          setTariff(locker.id, tariffId);
+          // toggleLocker и setTariff вызываются в onSuccess мутации
         } catch (error) {
           toast.error('Не удалось добавить ячейку в корзину');
         }
@@ -192,23 +197,18 @@ export const LockersPage = () => {
     setShowAuthModal(false);
     toast.success('Вход выполнен');
     // Обновляем корзину после авторизации
-    await refetchCart();
+    const freshCart = await refetchCart();
     refetchLockers();
 
     // Если есть заказ, автоматически переходим к оплате
-    if (cartData && cartData.items.length > 0) {
+    if (freshCart.data && freshCart.data.items.length > 0) {
       setTimeout(() => {
         handlePay();
       }, 500); // Небольшая задержка для обновления UI
     }
   };
 
-  // Эффект для синхронизации корзины при авторизации
-  useEffect(() => {
-    if (user && cartData) {
-      syncSelectionWithOrder(cartData);
-    }
-  }, [user, cartData, syncSelectionWithOrder]);
+  // Убрана автоматическая синхронизация корзины - пользователь должен сам выбирать ячейки
 
   // Удален проблемный useEffect, который вызывал бесконечный цикл
 
@@ -224,7 +224,8 @@ export const LockersPage = () => {
       toast.error('Корзина пуста');
       return;
     }
-    await payMutation.mutateAsync(order.id);
+    // Переходим на страницу оплаты вместо прямого вызова оплаты
+    navigate('/payment');
   };
 
   const filteredLockers = useMemo(() => {

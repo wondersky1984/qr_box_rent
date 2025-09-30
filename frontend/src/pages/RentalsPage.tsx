@@ -7,6 +7,7 @@ import { payOrder, confirmMock } from '../services/orders';
 import { useAuthStore } from '../store/authStore';
 import { Rental, Tariff } from '../types';
 import { toast } from '../components/ui/useToast';
+import { api } from '../services/api';
 
 const MOCK_PAYMENTS = import.meta.env.VITE_MOCK_PAYMENTS === 'true';
 
@@ -100,6 +101,18 @@ export const RentalsPage = () => {
     onError: () => toast.error('Не удалось подтвердить оплату'),
   });
 
+  const removeAwaitingMutation = useMutation({
+    mutationFn: (orderId: string) => {
+      // Удаляем заказ через API
+      return api.delete(`/orders/${orderId}`);
+    },
+    onSuccess: () => {
+      toast.success('Заказ отменен');
+      queryClient.invalidateQueries({ queryKey: ['rentals'] });
+    },
+    onError: () => toast.error('Не удалось отменить заказ'),
+  });
+
   if (!user) {
     return <p className="text-sm text-slate-400">Авторизуйтесь, чтобы увидеть активные аренды.</p>;
   }
@@ -152,6 +165,12 @@ export const RentalsPage = () => {
     completeMutation.mutate(rental.id);
   };
 
+  const handleRemoveAwaiting = (rental: Rental) => {
+    if (window.confirm('Вы уверены, что хотите отменить заказ?')) {
+      removeAwaitingMutation.mutate(rental.orderId);
+    }
+  };
+
   const handlePayAwaiting = (rental: Rental) => {
     payAwaitingMutation.mutate(rental.orderId);
   };
@@ -173,9 +192,11 @@ export const RentalsPage = () => {
               rental={rental}
               tariffs={tariffs}
               onPay={() => handlePayAwaiting(rental)}
+              onRemove={() => handleRemoveAwaiting(rental)}
               onMock={MOCK_PAYMENTS ? () => handleConfirmAwaitingMock(rental) : undefined}
               isPaying={payAwaitingMutation.isPending}
               isMocking={confirmAwaitingMockMutation.isPending}
+              isRemoving={removeAwaitingMutation.isPending}
             />
           ))}
         </div>
@@ -253,16 +274,20 @@ const AwaitingRentalCard = ({
   rental,
   tariffs,
   onPay,
+  onRemove,
   onMock,
   isPaying,
   isMocking,
+  isRemoving,
 }: {
   rental: Rental;
   tariffs: Tariff[];
   onPay: () => void;
+  onRemove: () => void;
   onMock?: () => void;
   isPaying: boolean;
   isMocking: boolean;
+  isRemoving: boolean;
 }) => {
   const tariff = tariffs.find((tar) => tar.id === rental.tariffId);
 
@@ -288,6 +313,13 @@ const AwaitingRentalCard = ({
             disabled={isPaying}
           >
             Оплатить
+          </button>
+          <button
+            className="rounded border border-red-400 px-4 py-2 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+            onClick={onRemove}
+            disabled={isRemoving}
+          >
+            Удалить
           </button>
           {onMock && (
             <button

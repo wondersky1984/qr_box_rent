@@ -23,6 +23,7 @@ export const MainLayout = () => {
 
   const navLinks = [
     { to: '/', label: 'Аренда' },
+    { to: '/manual', label: 'Ручной выбор' },
     { to: '/rentals', label: 'Мои ячейки' },
     { to: '/manager/lockers', label: 'Менеджер', roles: ['MANAGER', 'ADMIN'] },
     { to: '/admin/lockers', label: 'Админ', roles: ['ADMIN'] },

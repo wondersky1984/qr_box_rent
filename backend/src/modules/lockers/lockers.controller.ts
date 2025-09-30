@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Post, UseGuards, Req, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, UseGuards, Req, ForbiddenException, Body } from '@nestjs/common';
 import { LockersService } from './lockers.service';
 import { GetLockersQueryDto } from './dto/get-lockers-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -20,6 +20,92 @@ export class LockersController {
   async list(@Query() query: GetLockersQueryDto) {
     // Для админов и менеджеров показываем расширенную информацию
     return this.lockersService.getManagerLockers(query);
+  }
+
+  @Get('available-count')
+  async getAvailableCount() {
+    const count = await this.prisma.locker.count({
+      where: { status: 'FREE' },
+    });
+    return { count };
+  }
+
+  @Post('auto-assign')
+  @UseGuards(JwtAuthGuard)
+  async autoAssignLocker(
+    @CurrentUser() user: { userId: string },
+    @Body() body: { tariffId: string },
+  ) {
+    // Находим первую свободную ячейку
+    const freeLocker = await this.prisma.locker.findFirst({
+      where: { status: 'FREE' },
+      orderBy: { number: 'asc' },
+    });
+
+    if (!freeLocker) {
+      throw new Error('Нет свободных ячеек');
+    }
+
+    // Получаем тариф
+    const tariff = await this.prisma.tariff.findUnique({
+      where: { id: body.tariffId },
+    });
+
+    if (!tariff) {
+      throw new Error('Тариф не найден');
+    }
+
+    // Создаем заказ
+    const order = await this.prisma.order.create({
+      data: {
+        userId: user.userId,
+        status: 'DRAFT',
+        totalRub: tariff.priceRub,
+      },
+    });
+
+    // Создаем элемент заказа
+    const orderItem = await this.prisma.orderItem.create({
+      data: {
+        orderId: order.id,
+        lockerId: freeLocker.id,
+        tariffId: body.tariffId,
+        status: 'AWAITING_PAYMENT',
+        startAt: new Date(),
+        endAt: new Date(Date.now() + tariff.durationMinutes * 60 * 1000),
+      },
+    });
+
+    // Бронируем ячейку
+    await this.prisma.locker.update({
+      where: { id: freeLocker.id },
+      data: { status: 'HELD' },
+    });
+
+    return {
+      order,
+      orderItem,
+      locker: freeLocker,
+      tariff,
+    };
+  }
+
+  @Get('my-rentals')
+  @UseGuards(JwtAuthGuard)
+  async getMyRentals(@CurrentUser() user: { userId: string }) {
+    const rentals = await this.prisma.orderItem.findMany({
+      where: {
+        order: { userId: user.userId },
+        status: { in: ['ACTIVE', 'AWAITING_PAYMENT'] },
+      },
+      include: {
+        locker: true,
+        tariff: true,
+        order: true,
+      },
+    });
+
+    return rentals;
   }
 
   @Get(':id')

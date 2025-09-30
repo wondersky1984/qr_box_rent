@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../../core/prisma/prisma.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { TelegramOtpService } from './telegram-otp.service';
+import { TelegramOtpController } from './telegram-otp.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshStrategy } from './strategies/refresh.strategy';
 
@@ -22,8 +24,8 @@ import { RefreshStrategy } from './strategies/refresh.strategy';
       }),
     }),
   ],
-  providers: [AuthService, JwtStrategy, RefreshStrategy],
-  controllers: [AuthController],
+  providers: [AuthService, TelegramOtpService, JwtStrategy, RefreshStrategy],
+  controllers: [AuthController, TelegramOtpController],
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -8,13 +8,17 @@ import { AdminLockersPage } from './pages/AdminLockersPage';
 import { AdminTariffsPage } from './pages/AdminTariffsPage';
 import { AdminReportsPage } from './pages/AdminReportsPage';
 import { ManagerLockersPage } from './pages/ManagerLockersPage';
+import { AutoAssignPage } from './pages/AutoAssignPage';
+import { PaymentPage } from './pages/PaymentPage';
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <MainLayout />,
     children: [
-      { index: true, element: <LockersPage /> },
+      { index: true, element: <AutoAssignPage /> },
+      { path: 'manual', element: <LockersPage /> },
+      { path: 'payment', element: <PaymentPage /> },
       { path: 'payment/:status', element: <PaymentResultPage /> },
       { path: 'rentals', element: <RentalsPage /> },
       { path: 'manager/lockers', element: <ManagerLockersPage /> },

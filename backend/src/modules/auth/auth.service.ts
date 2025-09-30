@@ -135,10 +135,16 @@ export class AuthService {
 
     const tokens = await this.issueTokens(user.id, user.role, user.phone);
 
-    await this.prisma.refreshToken.update({
+    // Сначала удаляем старый refresh token
+    await this.prisma.refreshToken.delete({
       where: { id: saved.id },
+    });
+
+    // Затем создаем новый refresh token
+    await this.prisma.refreshToken.create({
       data: {
         token: tokens.refreshToken,
+        userId: user.id,
         expiresAt: dayjs().add(parseDurationMs(this.configService.get('app.jwt.refreshTtl'), 30 * 24 * 60 * 60 * 1000), 'millisecond').toDate(),
       },
     });
@@ -168,7 +174,7 @@ export class AuthService {
     return `+${digits}`;
   }
 
-  private async issueTokens(userId: string, role: Role, phone: string) {
+  async issueTokens(userId: string, role: Role, phone: string) {
     const payload = { sub: userId, role, phone };
     const accessToken = await this.jwtService.signAsync(payload);
     const refreshToken = randomUUID();
@@ -199,5 +205,27 @@ export class AuthService {
     });
 
     return { user: { id: user.id, phone: user.phone, role: user.role }, ...tokens };
+  }
+
+  async findOrCreateUser(phone: string) {
+    // Нормализуем номер телефона
+    const normalizedPhone = this.normalizePhone(phone);
+    
+    // Ищем существующего пользователя
+    let user = await this.prisma.user.findUnique({
+      where: { phone: normalizedPhone },
+    });
+
+    // Если пользователь не найден, создаем нового
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          phone: normalizedPhone,
+          role: 'USER',
+        },
+      });
+    }
+
+    return user;
   }
 }

@@ -9,9 +9,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db-data-local:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 10s
@@ -23,12 +23,11 @@ services:
       context: ./backend
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.local
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/lockbox?schema=public}
-      BASE_URL: ${BASE_URL:-http://localhost:8080}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
-      TELEGRAM_ACCESS_TOKEN: AAFACQAA0um8q4sGWSr9WkT1_kUK-6v5qnCYv5_qG5Ccqg
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/lockbox?schema=public
+      BASE_URL: http://localhost:8080
+      CORS_ORIGIN: http://localhost:8080
     depends_on:
       db:
         condition: service_healthy
@@ -41,7 +40,7 @@ services:
     depends_on:
       - app
     ports:
-      - "8080:80"
+      - "8083:80"
 
 volumes:
-  db-data:
+  db-data-local:
