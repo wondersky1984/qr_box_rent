@@ -31,3 +31,5 @@ if [ -n "$(git status --porcelain)" ]; then
 else
     echo "ℹ️  Нет изменений для коммита"
 fi
+
+

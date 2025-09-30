@@ -1,40 +1,41 @@
--- Скрипт для восстановления базовых данных
--- Выполняется после сброса базы данных
+-- Создание пользователей
+INSERT INTO "User" (id, phone, role, "createdAt", "updatedAt") VALUES 
+('227dd50e-77f8-476b-91fa-38655057d9da', '+79191461438', 'ADMIN', NOW(), NOW()),
+('70000000003', '+70000000003', 'ADMIN', NOW(), NOW())
+ON CONFLICT (phone) DO NOTHING;
 
--- Создаем ячейки
-INSERT INTO "Locker" (id, number, status, "createdAt", "updatedAt") VALUES
-('locker-1', 1, 'FREE', NOW(), NOW()),
-('locker-2', 2, 'FREE', NOW(), NOW()),
-('locker-3', 3, 'FREE', NOW(), NOW()),
-('locker-4', 4, 'FREE', NOW(), NOW()),
-('locker-5', 5, 'FREE', NOW(), NOW()),
-('locker-6', 6, 'FREE', NOW(), NOW()),
-('locker-7', 7, 'FREE', NOW(), NOW()),
-('locker-8', 8, 'FREE', NOW(), NOW()),
-('locker-9', 9, 'FREE', NOW(), NOW()),
-('locker-10', 10, 'FREE', NOW(), NOW()),
-('locker-11', 11, 'FREE', NOW(), NOW()),
-('locker-12', 12, 'FREE', NOW(), NOW()),
-('locker-13', 13, 'FREE', NOW(), NOW()),
-('locker-14', 14, 'FREE', NOW(), NOW()),
-('locker-15', 15, 'FREE', NOW(), NOW()),
-('locker-16', 16, 'FREE', NOW(), NOW()),
-('locker-17', 17, 'FREE', NOW(), NOW()),
-('locker-18', 18, 'FREE', NOW(), NOW()),
-('locker-19', 19, 'FREE', NOW(), NOW()),
-('locker-20', 20, 'FREE', NOW(), NOW());
+-- Создание ячеек
+INSERT INTO "Locker" (id, number, status, "createdAt", "updatedAt") VALUES 
+(gen_random_uuid(), 1, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 2, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 3, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 4, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 5, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 6, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 7, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 8, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 9, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 10, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 11, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 12, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 13, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 14, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 15, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 16, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 17, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 18, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 19, 'FREE', NOW(), NOW()),
+(gen_random_uuid(), 20, 'FREE', NOW(), NOW())
+ON CONFLICT (number) DO NOTHING;
 
--- Создаем тарифы
-INSERT INTO "Tariff" (id, code, name, "priceRub", "durationMinutes", active, "createdAt", "updatedAt") VALUES
-('tariff-hourly', 'HOURLY', 'Почасовой', 200, 60, true, NOW(), NOW()),
-('tariff-daily', 'DAILY', 'Дневной', 2000, 1440, true, NOW(), NOW());
+-- Создание тарифов
+INSERT INTO "Tariff" (id, code, name, "priceRub", "durationMinutes", active, "createdAt", "updatedAt") VALUES 
+(gen_random_uuid(), 'HOURLY', 'Почасовой', 200, 60, true, NOW(), NOW()),
+(gen_random_uuid(), 'DAILY', 'Дневной', 1000, 1440, true, NOW(), NOW())
+ON CONFLICT (code) DO NOTHING;
 
--- Создаем админа
-INSERT INTO "User" (id, phone, role, "createdAt", "updatedAt") VALUES
-('admin-1', '+70000000003', 'ADMIN', NOW(), NOW()),
-('admin-2', '+79191461438', 'ADMIN', NOW(), NOW());
-
--- Создаем настройки льготного периода
-INSERT INTO "Settings" (id, key, value, "createdAt", "updatedAt") VALUES
-('setting-1', 'grace_period_hourly_minutes', '15', NOW(), NOW()),
-('setting-2', 'grace_period_daily_minutes', '120', NOW(), NOW());
+-- Создание настроек
+INSERT INTO "Settings" (id, key, value, "createdAt", "updatedAt") VALUES 
+(gen_random_uuid(), 'grace_period_hourly', '15', NOW(), NOW()),
+(gen_random_uuid(), 'grace_period_daily', '120', NOW(), NOW())
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;

@@ -19,6 +19,63 @@ export class OrdersService {
     private readonly configService: ConfigService,
   ) {}
 
+  async prepareForPayment(orderId: string, userId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            locker: true,
+            tariff: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Заказ не найден');
+    }
+
+    if (order.userId !== userId) {
+      throw new ForbiddenException('Нет доступа к заказу');
+    }
+
+    if (order.status !== 'DRAFT') {
+      throw new BadRequestException('Заказ уже обработан');
+    }
+
+    if (!order.items.length) {
+      throw new BadRequestException('Корзина пуста');
+    }
+
+    // Обновляем статус элементов заказа и бронируем ячейки
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      for (const item of order.items) {
+        // Проверяем доступность ячейки
+        await this.lockersService.ensureAvailable(item.lockerId);
+        
+        // Обновляем статус элемента заказа
+        await tx.orderItem.update({
+          where: { id: item.id },
+          data: { 
+            status: 'AWAITING_PAYMENT',
+            startAt: new Date(),
+            endAt: new Date(Date.now() + item.tariff.durationMinutes * 60 * 1000),
+            holdUntil: new Date(Date.now() + 10 * 60 * 1000), // 10 минут брони
+          },
+        });
+
+        // Бронируем ячейку
+        await tx.locker.update({
+          where: { id: item.lockerId },
+          data: { status: 'HELD' },
+        });
+      }
+    });
+
+    return { success: true };
+  }
+
   async createPayment(orderId: string, userId: string) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -196,5 +253,53 @@ export class OrdersService {
       lockerId: item.lockerId,
       metadata: { newEnd },
     });
+  }
+
+  async cancelOrder(orderId: string, userId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            locker: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Заказ не найден');
+    }
+
+    if (order.userId !== userId) {
+      throw new ForbiddenException('Нет доступа к заказу');
+    }
+
+    if (order.status !== 'DRAFT' && order.status !== 'AWAITING_PAYMENT') {
+      throw new BadRequestException('Заказ нельзя отменить');
+    }
+
+    // Освобождаем забронированные ячейки и удаляем заказ
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Освобождаем ячейки
+      for (const item of order.items) {
+        await tx.locker.update({
+          where: { id: item.lockerId },
+          data: { status: 'FREE' },
+        });
+      }
+
+      // Сначала удаляем все OrderItem
+      await tx.orderItem.deleteMany({
+        where: { orderId: orderId },
+      });
+
+      // Затем удаляем заказ
+      await tx.order.delete({
+        where: { id: orderId },
+      });
+    });
+
+    return { success: true };
   }
 }

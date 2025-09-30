@@ -194,6 +194,7 @@ model OtpRequest {
   id         String   @id @default(uuid())
   phone      String
   code       String
+  requestId  String?  // Telegram Gateway request ID
   expiresAt  DateTime
   attempts   Int      @default(0)
   createdAt  DateTime @default(now())

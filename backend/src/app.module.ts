@@ -19,6 +19,8 @@ import { LockerDriverModule } from './modules/locker-driver/locker-driver.module
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './modules/health/health.module';
+import { AutoAssignModule } from './modules/auto-assign/auto-assign.module';
+import { DeviceModule } from './modules/device/device.module';
 
 @Module({
   imports: [
@@ -50,6 +52,8 @@ import { HealthModule } from './modules/health/health.module';
     RentalsModule,
     ManagerModule,
     AdminModule,
+    AutoAssignModule,
+    DeviceModule,
   ],
   providers: [
     {

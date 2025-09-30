@@ -142,3 +142,5 @@ git push origin main
 - **GitHub**: https://github.com/wondersky1984/qr_box_rent
 - **Продакшн**: http://box.getski.me:8082
 - **API Docs**: http://box.getski.me:8082/api/
+
+

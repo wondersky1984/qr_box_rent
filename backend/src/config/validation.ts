@@ -7,7 +7,7 @@ export default Joi.object({
   DATABASE_URL: Joi.string().uri().required(),
   JWT_ACCESS_SECRET: Joi.string().min(32).required(),
   JWT_REFRESH_SECRET: Joi.string().min(32).required(),
-  JWT_ACCESS_TTL: Joi.string().default('15m'),
+  JWT_ACCESS_TTL: Joi.string().default('1h'),
   JWT_REFRESH_TTL: Joi.string().default('30d'),
   YOOKASSA_SHOP_ID: Joi.string().allow('').optional(),
   YOOKASSA_SECRET_KEY: Joi.string().allow('').optional(),

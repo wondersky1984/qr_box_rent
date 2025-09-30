@@ -53,12 +53,16 @@ api.interceptors.response.use(
     ) {
       originalRequest._retry = true;
       try {
+        console.log('🔄 Попытка обновления токена...');
         const result = await triggerSessionRefresh();
         if (result) {
+          console.log('✅ Токен успешно обновлен, повторяем запрос');
           return api(originalRequest);
         }
+        console.log('❌ Не удалось обновить токен, очищаем сессию');
         clearHandler?.();
       } catch (refreshError) {
+        console.log('❌ Ошибка при обновлении токена:', refreshError);
         clearHandler?.();
         throw refreshError;
       }

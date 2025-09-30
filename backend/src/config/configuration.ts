@@ -26,6 +26,9 @@ type AppConfig = {
   cookies: {
     secure: boolean;
   };
+  telegram: {
+    accessToken: string;
+  };
 };
 
 export default registerAs<AppConfig>('app', () => ({
@@ -34,7 +37,7 @@ export default registerAs<AppConfig>('app', () => ({
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET ?? 'change-me',
     refreshSecret: process.env.JWT_REFRESH_SECRET ?? 'change-me-too',
-    accessTtl: process.env.JWT_ACCESS_TTL ?? '15m',
+    accessTtl: process.env.JWT_ACCESS_TTL ?? '1h',
     refreshTtl: process.env.JWT_REFRESH_TTL ?? '30d',
   },
   yookassa: {
@@ -53,5 +56,8 @@ export default registerAs<AppConfig>('app', () => ({
   },
   cookies: {
     secure: process.env.COOKIE_SECURE === 'true',
+  },
+  telegram: {
+    accessToken: process.env.TELEGRAM_ACCESS_TOKEN ?? '',
   },
 }));
