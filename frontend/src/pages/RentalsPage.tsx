@@ -413,7 +413,7 @@ const RentalCard = ({
           )}
           <div className="mt-2 space-y-1 text-sm text-slate-300">
             {rental.startAt && <div>Начало: {new Date(rental.startAt).toLocaleString('ru-RU')}</div>}
-            <div>Оплачено: {formatCurrency(rental.paidRub)}</div>
+            <div>Оплачено: {formatCurrency(rental.paidRub)} ({formatPaidTime(rental)})</div>
             <div>Накопилось: {formatCurrency(rental.accruedRub)}</div>
             {rental.outstandingRub > 0 && (
               <div className="text-amber-400">Задолженность: {formatCurrency(rental.outstandingRub)}</div>
@@ -492,6 +492,26 @@ const formatDuration = (ms: number) => {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} осталось`;
+};
+
+const formatPaidTime = (rental: Rental) => {
+  if (!rental.startAt || !rental.endAt) return '';
+  
+  const startTime = new Date(rental.startAt).getTime();
+  const endTime = new Date(rental.endAt).getTime();
+  const totalMinutes = Math.floor((endTime - startTime) / 60000);
+  
+  if (totalMinutes < 60) {
+    return `${totalMinutes} мин`;
+  } else if (totalMinutes < 1440) { // меньше суток
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return minutes > 0 ? `${hours}ч ${minutes}мин` : `${hours}ч`;
+  } else {
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    return hours > 0 ? `${days}д ${hours}ч` : `${days}д`;
+  }
 };
 
 const formatStatus = (status: Rental['status']) => {

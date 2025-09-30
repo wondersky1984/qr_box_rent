@@ -265,12 +265,23 @@ export class OrdersService {
 
     const quantity = parseInt(metadata.quantity as string) || 1;
     const totalDurationMinutes = tariff.durationMinutes * quantity;
+    const extensionPrice = tariff.priceRub * quantity;
 
     // При продлении используем текущее время окончания как базовую точку
     const currentEnd = item.endAt || new Date();
     const newEnd = dayjs(currentEnd).add(totalDurationMinutes, 'minute').toDate();
 
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Обновляем заказ - увеличиваем общую сумму
+      await tx.order.update({
+        where: { id: item.orderId },
+        data: {
+          totalRub: {
+            increment: extensionPrice,
+          },
+        },
+      });
+
       await tx.orderItem.update({
         where: { id: item.id },
         data: {
