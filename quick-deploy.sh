@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "🚀 Быстрый деплой LockBox"
+echo "🚀 Быстрый деплой Telegram OTP v0.2.0"
 
 # Обновляем код
 echo "📥 Обновляем код..."
 git fetch origin
-git checkout main
-git pull origin main
+git checkout feature/auto-assign-lockers
+git pull origin feature/auto-assign-lockers
 
 # Проверяем сеть
 echo "🌐 Проверяем сетевой доступ..."
@@ -30,5 +30,5 @@ docker compose exec app npx prisma db push
 echo "✅ Проверяем статус..."
 docker compose ps
 
-echo "🎉 Деплой завершен!"
-echo "📱 LockBox доступен на http://localhost:8080"
+echo "🎉 Деплой завершен! Версия: 0.2.0"
+echo "📱 Telegram OTP доступен на http://localhost:8080"

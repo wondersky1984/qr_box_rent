@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_DIR="${DEPLOY_PATH:-$HOME/qr_box_rent}"
-BRANCH="main"
+BRANCH="feature/auto-assign-lockers"
 
 if [ ! -d "$REPO_DIR" ]; then
   echo "Repository directory $REPO_DIR not found" >&2
@@ -11,7 +11,7 @@ fi
 
 cd "$REPO_DIR"
 
-echo "[deploy] Pulling latest code from main..."
+echo "[deploy] Pulling latest code from feature/auto-assign-lockers..."
 git fetch origin "$BRANCH"
 git checkout "$BRANCH"
 git pull origin "$BRANCH"
@@ -27,4 +27,4 @@ echo "[deploy] Testing Telegram OTP API..."
 echo "Testing network connectivity to Telegram Gateway API..."
 docker compose exec -T app sh -c "wget -q --spider https://gatewayapi.telegram.org && echo '✅ Telegram Gateway API accessible' || echo '❌ Telegram Gateway API not accessible'"
 
-echo "[deploy] Done - LockBox deployed"
+echo "[deploy] Done - Telegram OTP v0.2.0 deployed"

@@ -8,6 +8,7 @@ import { useAuthStore } from '../store/authStore';
 import { Rental, Tariff } from '../types';
 import { toast } from '../components/ui/useToast';
 import { api } from '../services/api';
+import { ExtendRentalModal } from '../components/rentals/ExtendRentalModal';
 
 const MOCK_PAYMENTS = import.meta.env.VITE_MOCK_PAYMENTS === 'true';
 
@@ -15,6 +16,8 @@ export const RentalsPage = () => {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [now, setNow] = useState(Date.now());
+  const [extendModalOpen, setExtendModalOpen] = useState(false);
+  const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000 * 30);
@@ -31,6 +34,14 @@ export const RentalsPage = () => {
     queryKey: ['tariffs'],
     queryFn: fetchTariffs,
     enabled: Boolean(user),
+  });
+
+  // Отладочная информация
+  console.log('RentalsPage debug:', {
+    tariffs: tariffsQuery.data?.length || 0,
+    tariffsData: tariffsQuery.data,
+    selectedRental: selectedRental ? { id: selectedRental.id, tariff: selectedRental.tariff } : null,
+    extendModalOpen
   });
 
   const [openingLockerId, setOpeningLockerId] = useState<string | null>(null);
@@ -59,9 +70,11 @@ export const RentalsPage = () => {
   });
 
   const extendMutation = useMutation({
-    mutationFn: ({ rentalId, tariffId }: { rentalId: string; tariffId: string }) =>
-      extendRental(rentalId, { tariffId }),
+    mutationFn: ({ rentalId, tariffId, quantity }: { rentalId: string; tariffId: string; quantity: number }) =>
+      extendRental(rentalId, { tariffId, quantity }),
     onSuccess: (data) => {
+      setExtendModalOpen(false);
+      setSelectedRental(null);
       window.location.href = data.confirmationUrl;
     },
     onError: () => toast.error('Не удалось создать продление'),
@@ -147,14 +160,17 @@ export const RentalsPage = () => {
       toast.error('Нет тарифов для продления');
       return;
     }
-    const choice = window.prompt('Введите тариф (HOURLY или DAILY)', 'HOURLY');
-    if (!choice) return;
-    const tariff = tariffs.find((t) => t.code === choice.toUpperCase());
-    if (!tariff) {
-      toast.error('Тариф не найден');
-      return;
-    }
-    extendMutation.mutate({ rentalId: rental.id, tariffId: tariff.id });
+    setSelectedRental(rental);
+    setExtendModalOpen(true);
+  };
+
+  const handleExtendConfirm = (tariffId: string, quantity: number) => {
+    if (!selectedRental) return;
+    extendMutation.mutate({ 
+      rentalId: selectedRental.id, 
+      tariffId, 
+      quantity 
+    });
   };
 
   const handleSettle = (rental: Rental) => {
@@ -266,6 +282,18 @@ export const RentalsPage = () => {
           ))}
         </div>
       </section>
+
+      <ExtendRentalModal
+        isOpen={extendModalOpen}
+        onClose={() => {
+          setExtendModalOpen(false);
+          setSelectedRental(null);
+        }}
+        onConfirm={handleExtendConfirm}
+        tariffs={tariffs}
+        currentTariff={selectedRental?.tariff}
+        isLoading={extendMutation.isPending}
+      />
     </div>
   );
 };

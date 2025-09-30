@@ -2,15 +2,15 @@
 
 ## 1. Подключение к серверу
 ```bash
-ssh -i ~/.ssh/cursor_deploy deploy@62.113.36.37
+ssh root@45.12.74.108
 ```
 
 ## 2. Обновление кода
 ```bash
-cd qr_box_rent
+cd /root/qr_box_rent
 git fetch origin
-git checkout main
-git pull origin main
+git checkout feature/auto-assign-lockers
+git pull origin feature/auto-assign-lockers
 ```
 
 ## 3. Проверка сетевого доступа Docker

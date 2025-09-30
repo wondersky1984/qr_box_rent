@@ -120,13 +120,23 @@ export class PaymentsService {
   }
 
   async markPaymentSucceeded(paymentId: string, payload?: unknown) {
+    // Получаем текущий платеж, чтобы сохранить оригинальные метаданные
+    const currentPayment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+
     const serializedPayload =
       payload !== undefined ? (JSON.parse(JSON.stringify(payload)) as Prisma.InputJsonValue) : undefined;
+    
+    // Сохраняем оригинальные метаданные, если они есть
+    const originalMetadata = currentPayment?.payload;
+    const finalPayload = originalMetadata || serializedPayload;
+
     const payment = await this.prisma.payment.update({
       where: { id: paymentId },
       data: {
         status: 'SUCCEEDED',
-        payload: serializedPayload,
+        payload: finalPayload,
       },
     });
 

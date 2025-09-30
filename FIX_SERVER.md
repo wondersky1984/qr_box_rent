@@ -9,8 +9,8 @@
 
 ### 1. Подключиться к серверу:
 ```bash
-ssh -i ~/.ssh/cursor_deploy deploy@62.113.36.37
-cd qr_box_rent
+ssh root@45.12.74.108
+cd /root/qr_box_rent
 ```
 
 ### 2. Проверить статус:

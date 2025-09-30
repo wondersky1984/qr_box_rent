@@ -67,15 +67,19 @@ export class RentalsService {
       ? await this.tariffsService.getTariffById(dto.tariffId)
       : item.tariff ?? (await this.tariffsService.getDefaultTariff());
 
+    const quantity = dto.quantity ?? 1;
+    const totalPrice = tariff.priceRub * quantity;
+
     const metadata = {
       orderId: item.orderId,
       extendOrderItemId: item.id,
       tariffId: tariff.id,
+      quantity: quantity.toString(),
     };
 
     const { confirmationUrl, payment } = await this.paymentsService.createPayment(
       item.orderId,
-      tariff.priceRub,
+      totalPrice,
       userId,
       metadata,
     );

@@ -4,10 +4,10 @@
 
 ```bash
 # 1. Подключиться к серверу
-ssh -i ~/.ssh/cursor_deploy deploy@62.113.36.37
+ssh root@45.12.74.108
 
 # 2. Перейти в директорию проекта
-cd qr_box_rent
+cd /root/qr_box_rent
 
 # 3. Выполнить быстрый деплой
 chmod +x quick-deploy.sh
@@ -19,8 +19,8 @@ chmod +x quick-deploy.sh
 ```bash
 # 1. Обновить код
 git fetch origin
-git checkout main
-git pull origin main
+git checkout feature/auto-assign-lockers
+git pull origin feature/auto-assign-lockers
 
 # 2. Проверить сетевой доступ
 docker run --rm curlimages/curl curl -s https://gatewayapi.telegram.org/sendVerificationMessage

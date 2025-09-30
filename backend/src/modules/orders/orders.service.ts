@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
@@ -10,6 +10,8 @@ import dayjs from 'dayjs';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
@@ -50,13 +52,10 @@ export class OrdersService {
 
     // Обновляем статус элементов заказа и бронируем ячейки
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Обновляем статус заказа на AWAITING_PAYMENT
-      await tx.order.update({
-        where: { id: orderId },
-        data: { status: 'AWAITING_PAYMENT' },
-      });
-
       for (const item of order.items) {
+        // Проверяем доступность ячейки
+        await this.lockersService.ensureAvailable(item.lockerId);
+        
         // Обновляем статус элемента заказа только если он еще не подготовлен
         if (item.status !== 'AWAITING_PAYMENT') {
           await tx.orderItem.update({
@@ -70,14 +69,11 @@ export class OrdersService {
           });
         }
 
-        // Бронируем ячейку только если она еще не забронирована
-        const locker = await tx.locker.findUnique({ where: { id: item.lockerId } });
-        if (locker && locker.status === 'FREE') {
-          await tx.locker.update({
-            where: { id: item.lockerId },
-            data: { status: 'HELD' },
-          });
-        }
+        // Бронируем ячейку
+        await tx.locker.update({
+          where: { id: item.lockerId },
+          data: { status: 'HELD' },
+        });
       }
     });
 
@@ -119,12 +115,9 @@ export class OrdersService {
       }
     }
 
-    const metadata: Record<string, string> = {
+    const metadata: Record<string, unknown> = {
       orderId,
-      userId,
-      itemsCount: order.items.length.toString(),
-      lockers: order.items.map((item) => item.lockerId).join(','),
-      tariffs: order.items.map((item) => item.tariffId).join(','),
+      items: order.items.map((item) => ({ lockerId: item.lockerId, tariffId: item.tariffId })),
     };
 
     const { confirmationUrl, payment } = await this.paymentsService.createPayment(
@@ -190,12 +183,23 @@ export class OrdersService {
     }
 
     const rawPayload = payment.payload as any;
-    const metadata = rawPayload?.metadata ?? rawPayload ?? {};
+    const metadata = rawPayload ?? {};
+
+    this.logger.log('Payment metadata:', JSON.stringify(metadata, null, 2));
 
     if (metadata?.extendOrderItemId) {
-      await this.handleExtension(metadata);
-      return;
+      this.logger.log('Handling extension for order item:', metadata.extendOrderItemId);
+      try {
+        await this.handleExtension(metadata);
+        this.logger.log('Extension handled successfully, returning');
+        return;
+      } catch (error) {
+        this.logger.error('Error handling extension:', error);
+        throw error;
+      }
     }
+
+    this.logger.log('Not an extension, proceeding with normal activation');
 
     const activations: { itemId: string; lockerId: string }[] = [];
 
@@ -234,24 +238,37 @@ export class OrdersService {
   }
 
   private async handleExtension(metadata: Record<string, any>) {
+    this.logger.log('handleExtension called with metadata:', JSON.stringify(metadata, null, 2));
+    
     const orderItemId = metadata.extendOrderItemId as string;
-    if (!orderItemId) return;
+    if (!orderItemId) {
+      this.logger.log('No extendOrderItemId found, returning');
+      return;
+    }
 
+    this.logger.log('Looking for order item:', orderItemId);
     const item = await this.prisma.orderItem.findUnique({
       where: { id: orderItemId },
       include: { tariff: true },
     });
     if (!item) {
+      this.logger.error('Order item not found:', orderItemId);
       throw new NotFoundException('Rental not found for extension');
     }
+    
+    this.logger.log('Order item found:', { id: item.id, startAt: item.startAt, endAt: item.endAt });
 
     const tariffId = metadata.tariffId as string | undefined;
     const tariff = tariffId
       ? await this.tariffsService.getTariffById(tariffId)
       : item.tariff ?? (await this.tariffsService.getDefaultTariff());
 
-    const baseStart = item.endAt && dayjs(item.endAt).isAfter(dayjs()) ? item.endAt : new Date();
-    const newEnd = dayjs(baseStart).add(tariff.durationMinutes, 'minute').toDate();
+    const quantity = parseInt(metadata.quantity as string) || 1;
+    const totalDurationMinutes = tariff.durationMinutes * quantity;
+
+    // При продлении используем текущее время окончания как базовую точку
+    const currentEnd = item.endAt || new Date();
+    const newEnd = dayjs(currentEnd).add(totalDurationMinutes, 'minute').toDate();
 
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.orderItem.update({
@@ -259,6 +276,7 @@ export class OrdersService {
         data: {
           status: 'ACTIVE',
           endAt: newEnd,
+          // НЕ обновляем startAt при продлении!
         },
       });
       await tx.locker.update({ where: { id: item.lockerId }, data: { status: 'OCCUPIED' } });
@@ -307,17 +325,12 @@ export class OrdersService {
         });
       }
 
-      // Сначала удаляем все платежи
-      await tx.payment.deleteMany({
-        where: { orderId: orderId },
-      });
-
-      // Затем удаляем все OrderItem
+      // Сначала удаляем все OrderItem
       await tx.orderItem.deleteMany({
         where: { orderId: orderId },
       });
 
-      // И наконец удаляем заказ
+      // Затем удаляем заказ
       await tx.order.delete({
         where: { id: orderId },
       });

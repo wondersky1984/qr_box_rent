@@ -6,7 +6,7 @@ export const fetchRentals = async () => {
   return data;
 };
 
-export const extendRental = async (id: string, payload: { tariffId?: string }) => {
+export const extendRental = async (id: string, payload: { tariffId?: string; quantity?: number }) => {
   const { data } = await api.post(`/order-items/${id}/extend`, payload);
   return data as { confirmationUrl: string; paymentId: string };
 };
