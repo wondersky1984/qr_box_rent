@@ -1,10 +1,10 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class AddToCartDto {
-  @IsUUID()
+  @IsString()
   lockerId!: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString()
   tariffId?: string;
 }
