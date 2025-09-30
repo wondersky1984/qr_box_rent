@@ -50,6 +50,12 @@ export class OrdersService {
 
     // Обновляем статус элементов заказа и бронируем ячейки
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Обновляем статус заказа на AWAITING_PAYMENT
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: 'AWAITING_PAYMENT' },
+      });
+
       for (const item of order.items) {
         // Проверяем доступность ячейки
         await this.lockersService.ensureAvailable(item.lockerId);
