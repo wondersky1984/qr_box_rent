@@ -57,4 +57,36 @@ export class PaymentsController {
       };
     }
   }
+
+  @Post('create-test')
+  async createTestPaymentDirect(@Body() body: { 
+    orderId: string; 
+    amount: number; 
+    userId: string; 
+    description?: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    try {
+      const result = await this.paymentsService.createPayment(
+        body.orderId,
+        body.amount,
+        body.userId,
+        body.metadata || { test: true, description: body.description },
+      );
+      
+      return {
+        success: true,
+        orderId: body.orderId,
+        paymentId: result.payment.id,
+        confirmationUrl: result.confirmationUrl,
+        ykPaymentId: result.payment.ykPaymentId,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      };
+    }
+  }
 }
