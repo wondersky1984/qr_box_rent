@@ -57,9 +57,6 @@ export class OrdersService {
       });
 
       for (const item of order.items) {
-        // Проверяем доступность ячейки
-        await this.lockersService.ensureAvailable(item.lockerId);
-        
         // Обновляем статус элемента заказа только если он еще не подготовлен
         if (item.status !== 'AWAITING_PAYMENT') {
           await tx.orderItem.update({
@@ -73,11 +70,14 @@ export class OrdersService {
           });
         }
 
-        // Бронируем ячейку
-        await tx.locker.update({
-          where: { id: item.lockerId },
-          data: { status: 'HELD' },
-        });
+        // Бронируем ячейку только если она еще не забронирована
+        const locker = await tx.locker.findUnique({ where: { id: item.lockerId } });
+        if (locker && locker.status === 'FREE') {
+          await tx.locker.update({
+            where: { id: item.lockerId },
+            data: { status: 'HELD' },
+          });
+        }
       }
     });
 
