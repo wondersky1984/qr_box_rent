@@ -5,8 +5,8 @@ import { useAuthStore } from '../store/authStore';
 import { AuthDialog } from '../components/auth/AuthDialog';
 import { toast } from '../components/ui/useToast';
 import { fetchTariffs } from '../services/tariffs';
-import { getAvailableCount, getMyRentals } from '../services/auto-assign';
-import { addToCart, fetchCart } from '../services/cart';
+import { getAvailableCount, getMyRentals, assignLocker } from '../services/auto-assign';
+import { fetchCart } from '../services/cart';
 import { payOrder, confirmMock } from '../services/orders';
 
 const MOCK_PAYMENTS = import.meta.env.VITE_MOCK_PAYMENTS === 'true';
@@ -57,17 +57,9 @@ export const AutoAssignPage = () => {
         // Игнорируем ошибки при проверке корзины
       }
       
-      // Если заказа нет, создаем новый
-      const lockers = await fetch('/api/lockers').then(res => res.json());
-      const freeLocker = lockers.find((locker: any) => locker.status === 'FREE');
-      
-      if (!freeLocker) {
-        throw new Error('Нет свободных ячеек');
-      }
-      
-      // Добавляем ячейку в корзину
-      const order = await addToCart(freeLocker.id, tariffId);
-      return { order, locker: freeLocker };
+      // Используем правильный endpoint для автоматического назначения
+      const result = await assignLocker(tariffId);
+      return { order: result.order, locker: result.locker };
     },
     onSuccess: (data) => {
       toast.success('Ячейка назначена! Переходим к оплате...');

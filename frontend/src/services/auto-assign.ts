@@ -2,7 +2,7 @@ import { api } from './api';
 import { fetchLockers } from './lockers';
 
 export const assignLocker = async (tariffId: string) => {
-  const response = await api.post('/lockers/auto-assign', { tariffId });
+  const response = await api.post('/auto-assign/assign', { tariffId });
   return response.data;
 };
 

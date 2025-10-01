@@ -52,6 +52,12 @@ export class OrdersService {
 
     // Обновляем статус элементов заказа и бронируем ячейки
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Обновляем статус заказа на AWAITING_PAYMENT
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: 'AWAITING_PAYMENT' },
+      });
+
       for (const item of order.items) {
         // Проверяем доступность ячейки
         await this.lockersService.ensureAvailable(item.lockerId);
@@ -267,13 +273,22 @@ export class OrdersService {
     const totalDurationMinutes = tariff.durationMinutes * quantity;
     const extensionPrice = tariff.priceRub * quantity;
 
+    this.logger.log('Extension calculation:', {
+      quantity,
+      tariffPrice: tariff.priceRub,
+      extensionPrice,
+      totalDurationMinutes
+    });
+
     // При продлении используем текущее время окончания как базовую точку
     const currentEnd = item.endAt || new Date();
     const newEnd = dayjs(currentEnd).add(totalDurationMinutes, 'minute').toDate();
 
+    this.logger.log('Before transaction - Order totalRub will be incremented by:', extensionPrice);
+
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Обновляем заказ - увеличиваем общую сумму
-      await tx.order.update({
+      const updatedOrder = await tx.order.update({
         where: { id: item.orderId },
         data: {
           totalRub: {
@@ -281,6 +296,8 @@ export class OrdersService {
           },
         },
       });
+      
+      this.logger.log('Order totalRub updated to:', updatedOrder.totalRub);
 
       await tx.orderItem.update({
         where: { id: item.id },
