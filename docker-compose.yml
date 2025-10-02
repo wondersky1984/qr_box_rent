@@ -13,10 +13,11 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "lockbox"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   app:
     build:
@@ -33,16 +34,29 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["sh", "-c", "npx prisma migrate deploy || npx prisma db push; node dist/main.js"]
+    command: ["sh", "-c", "npx prisma migrate deploy && npm run seed:prod && node dist/main.js"]
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   nginx:
     build:
       context: ./frontend
     restart: unless-stopped
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     ports:
       - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 volumes:
   db-data:

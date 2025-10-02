@@ -21,6 +21,8 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './modules/health/health.module';
 import { AutoAssignModule } from './modules/auto-assign/auto-assign.module';
 import { DeviceModule } from './modules/device/device.module';
+import { SeedModule } from './modules/seed/seed.module';
+import { MiddlewareModule } from './common/middleware/middleware.module';
 
 @Module({
   imports: [
@@ -54,6 +56,8 @@ import { DeviceModule } from './modules/device/device.module';
     AdminModule,
     AutoAssignModule,
     DeviceModule,
+    SeedModule,
+    MiddlewareModule,
   ],
   providers: [
     {
