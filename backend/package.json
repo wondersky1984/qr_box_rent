@@ -17,6 +17,9 @@
     "seed:prod": "node dist/scripts/seed.js",
     "db:init": "npx prisma migrate deploy && npm run seed:prod"
   },
+  "prisma": {
+    "seed": "ts-node -r tsconfig-paths/register src/scripts/seed.ts"
+  },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.0",
