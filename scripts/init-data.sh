@@ -26,7 +26,7 @@ docker compose exec app npx prisma db execute --stdin << 'EOF'
 INSERT INTO "Tariff" (id, code, name, "priceRub", "durationMinutes", active, "createdAt", "updatedAt") VALUES
 ('tariff-hourly', 'HOURLY', 'Почасовая аренда', 100, 60, true, NOW(), NOW()),
 ('tariff-daily', 'DAILY', 'Дневная аренда', 500, 1440, true, NOW(), NOW()),
-('tariff-weekly', 'DAILY', 'Недельная аренда', 2000, 10080, true, NOW(), NOW())
+('tariff-weekly', 'WEEKLY', 'Недельная аренда', 2000, 10080, true, NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 EOF
 
