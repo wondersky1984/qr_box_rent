@@ -23,10 +23,10 @@ EOF
 
 # Создаем тарифы
 docker compose exec app npx prisma db execute --stdin << 'EOF'
-INSERT INTO "Tariff" (id, name, "priceRub", "durationMinutes", "createdAt", "updatedAt") VALUES 
-('tariff-hourly', 'Почасовая аренда', 100, 60, NOW(), NOW()),
-('tariff-daily', 'Дневная аренда', 500, 1440, NOW(), NOW()),
-('tariff-weekly', 'Недельная аренда', 2000, 10080, NOW(), NOW())
+INSERT INTO "Tariff" (id, code, name, "priceRub", "durationMinutes", active, "createdAt", "updatedAt") VALUES
+('tariff-hourly', 'HOURLY', 'Почасовая аренда', 100, 60, true, NOW(), NOW()),
+('tariff-daily', 'DAILY', 'Дневная аренда', 500, 1440, true, NOW(), NOW()),
+('tariff-weekly', 'DAILY', 'Недельная аренда', 2000, 10080, true, NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 EOF
 
