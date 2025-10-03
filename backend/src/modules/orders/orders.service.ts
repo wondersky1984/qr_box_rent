@@ -123,7 +123,7 @@ export class OrdersService {
 
     const metadata: Record<string, unknown> = {
       orderId,
-      items: order.items.map((item) => ({ lockerId: item.lockerId, tariffId: item.tariffId })),
+      items: JSON.stringify(order.items.map((item) => ({ lockerId: item.lockerId, tariffId: item.tariffId }))),
     };
 
     const { confirmationUrl, payment } = await this.paymentsService.createPayment(
