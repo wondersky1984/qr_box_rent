@@ -206,12 +206,14 @@ export class TelegramOtpService {
     } catch (error) {
       this.logger.error('Error sending Telegram message:', error);
 
-      if (error.name === 'AbortError') {
-        throw new Error('Превышено время ожидания ответа от Telegram API');
-      }
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Превышено время ожидания ответа от Telegram API');
+        }
 
-      if (error.message.includes('fetch')) {
-        throw new Error('Не удается подключиться к Telegram Gateway API');
+        if (error.message.includes('fetch')) {
+          throw new Error('Не удается подключиться к Telegram Gateway API');
+        }
       }
 
       throw error;

@@ -94,7 +94,7 @@ export class PaymentsService {
         },
         description: `LockBox Order ${orderId}`,
         metadata: {
-          ...jsonMetadata,
+          ...(typeof jsonMetadata === 'object' && jsonMetadata !== null ? jsonMetadata : {}),
           orderId,
           userId,
         },
@@ -139,13 +139,16 @@ export class PaymentsService {
           throw new InternalServerErrorException('Неверные настройки YooKassa (авторизация)');
         } else if (status === 400) {
           throw new BadRequestException(`Ошибка в данных платежа: ${errorData?.message || 'Bad request'}`);
-        } else if (status >= 500) {
+        } else if (status && status >= 500) {
           throw new InternalServerErrorException('Ошибка сервера YooKassa, попробуйте позже');
         }
       }
 
-      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-        throw new InternalServerErrorException('Не удается подключиться к YooKassa API');
+      if (error instanceof Error && ('code' in error)) {
+        const errorCode = (error as any).code;
+        if (errorCode === 'ECONNREFUSED' || errorCode === 'ENOTFOUND') {
+          throw new InternalServerErrorException('Не удается подключиться к YooKassa API');
+        }
       }
 
       throw new InternalServerErrorException('Не удалось создать платёж');
