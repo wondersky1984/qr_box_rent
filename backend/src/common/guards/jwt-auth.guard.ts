@@ -7,6 +7,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
+    console.log(`[JwtAuthGuard] 🔐 Activated for ${request.method} ${request.url}`);
+    console.log(`[JwtAuthGuard] 🍪 Cookies:`, request.cookies);
+    console.log(`[JwtAuthGuard] 🍪 lockbox_access:`, request.cookies?.lockbox_access ? 'EXISTS' : 'NOT FOUND');
     this.logger.log(`🔐 JwtAuthGuard activated for ${request.method} ${request.url}`);
     this.logger.log(`🍪 Cookies present: ${Object.keys(request.cookies || {}).join(', ')}`);
     this.logger.log(`🍪 lockbox_access cookie: ${request.cookies?.lockbox_access ? 'EXISTS' : 'NOT FOUND'}`);
@@ -15,6 +18,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
+    console.log(`[JwtAuthGuard] 📥 handleRequest called`);
+    console.log(`[JwtAuthGuard]   err:`, err);
+    console.log(`[JwtAuthGuard]   user:`, user);
+    console.log(`[JwtAuthGuard]   info:`, info);
     this.logger.log(`📥 JwtAuthGuard.handleRequest called`);
     this.logger.log(`   err: ${err}`);
     this.logger.log(`   user: ${JSON.stringify(user)}`);
