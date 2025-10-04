@@ -116,13 +116,13 @@ export class PaymentsService {
         throw new Error('Неверный ответ от YooKassa API');
       }
 
-      const responsePayload = JSON.parse(JSON.stringify(response.data)) as Prisma.InputJsonValue;
-
+      // НЕ перезаписываем payload! Там уже сохранены наши metadata
+      // Обновляем только ykPaymentId
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
           ykPaymentId: response.data.id,
-          payload: responsePayload,
+          // НЕ трогаем payload - оставляем оригинальные metadata
         },
       });
 
