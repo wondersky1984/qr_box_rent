@@ -209,3 +209,4 @@ docker compose up -d --build
 5. Создать тег `v1.1-working-rental-extension`
 6. Задеплоить на продакшн
 
+
