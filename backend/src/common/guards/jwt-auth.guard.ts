@@ -6,6 +6,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   private readonly logger = new Logger(JwtAuthGuard.name);
 
   canActivate(context: ExecutionContext) {
+    console.log('[JwtAuthGuard] ================ START canActivate ================');
     const request = context.switchToHttp().getRequest();
     console.log(`[JwtAuthGuard] 🔐 Activated for ${request.method} ${request.url}`);
     console.log(`[JwtAuthGuard] 🍪 Cookies:`, request.cookies);
