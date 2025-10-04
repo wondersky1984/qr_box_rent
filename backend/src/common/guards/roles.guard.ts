@@ -1,10 +1,12 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Role } from '@prisma/client';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
+  private readonly logger = new Logger(RolesGuard.name);
+
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -13,16 +15,25 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
 
+    this.logger.debug(`Required roles: ${JSON.stringify(requiredRoles)}`);
+
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest<{ user?: { role?: Role } }>();
     const role = request.user?.role as Role | undefined;
+    
+    this.logger.debug(`User role: ${role}, User object: ${JSON.stringify(request.user)}`);
+    
     if (!role) {
+      this.logger.warn('No role found in request.user');
       return false;
     }
 
-    return requiredRoles.includes(role);
+    const hasAccess = requiredRoles.includes(role);
+    this.logger.debug(`Access granted: ${hasAccess}, comparing ${role} in [${requiredRoles}]`);
+    
+    return hasAccess;
   }
 }
