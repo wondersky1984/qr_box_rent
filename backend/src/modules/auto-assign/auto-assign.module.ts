@@ -4,9 +4,10 @@ import { AutoAssignController } from './auto-assign.controller';
 import { PrismaModule } from '../../core/prisma/prisma.module';
 import { TariffsModule } from '../tariffs/tariffs.module';
 import { LockersModule } from '../lockers/lockers.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, TariffsModule, LockersModule],
+  imports: [PrismaModule, TariffsModule, LockersModule, AuthModule],
   providers: [AutoAssignService],
   controllers: [AutoAssignController],
   exports: [AutoAssignService],

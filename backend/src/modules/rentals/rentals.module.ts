@@ -5,11 +5,10 @@ import { RentalsController } from './rentals.controller';
 import { PaymentsModule } from '../payments/payments.module';
 import { TariffsModule } from '../tariffs/tariffs.module';
 import { LockersModule } from '../lockers/lockers.module';
-
-
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, PaymentsModule, TariffsModule, LockersModule],
+  imports: [PrismaModule, PaymentsModule, TariffsModule, LockersModule, AuthModule],
   providers: [RentalsService],
   controllers: [RentalsController],
   exports: [RentalsService],
