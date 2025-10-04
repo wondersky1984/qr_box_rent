@@ -56,6 +56,7 @@ export interface Order {
 
 export interface Rental extends OrderItem {
   paidRub: number;
+  paidMinutes: number; // Общее оплаченное время в минутах (с учетом всех продлений)
   accruedRub: number;
   outstandingRub: number;
   overdueMinutes: number;

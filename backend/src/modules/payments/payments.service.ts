@@ -156,25 +156,17 @@ export class PaymentsService {
   }
 
   async markPaymentSucceeded(paymentId: string, payload?: unknown) {
-    // Получаем текущий платеж, чтобы сохранить оригинальные метаданные
-    const currentPayment = await this.prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
-
-    const serializedPayload =
-      payload !== undefined ? (JSON.parse(JSON.stringify(payload)) as Prisma.InputJsonValue) : undefined;
-    
-    // Сохраняем оригинальные метаданные, если они есть
-    const originalMetadata = currentPayment?.payload;
-    const finalPayload = originalMetadata || serializedPayload;
-
+    // НЕ перезаписываем payload - оригинальные metadata уже сохранены при создании платежа
+    // Webhook данные из YooKassa нам не нужны, важны только наши внутренние metadata
     const payment = await this.prisma.payment.update({
       where: { id: paymentId },
       data: {
         status: 'SUCCEEDED',
-        payload: finalPayload,
+        // НЕ трогаем payload! Там уже есть наши metadata с extendOrderItemId и т.д.
       },
     });
+
+    this.logger.log(`Payment marked as succeeded: ${paymentId}, original metadata preserved`);
 
     await this.auditService.createLog({
       actorType: 'SYSTEM',

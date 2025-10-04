@@ -24,6 +24,13 @@ export class RentalsService {
       include: {
         locker: true,
         tariff: true,
+        order: {
+          include: {
+            payments: {
+              where: { status: 'SUCCEEDED' },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -31,15 +38,59 @@ export class RentalsService {
     return Promise.all(
       rentals.map(async (item) => {
         const meta = await this.calculateOverdueMeta(item.id);
-        const basePriceRub = item.tariff?.priceRub ?? 0;
-        const accruedRub = basePriceRub + meta.overdueRub;
-        const paidRub = basePriceRub;
-        const outstandingRub = Math.max(0, accruedRub - paidRub);
+        
+        // Рассчитываем оплаченную сумму и время: суммируем все успешные платежи, связанные с этим orderItem
+        let paidRub = 0;
+        let paidMinutes = 0; // Общее оплаченное время в минутах
+        
+        for (const payment of item.order.payments) {
+          const metadata = payment.payload as any;
+          
+          // Первоначальный платеж (без extendOrderItemId и settleOrderItemId) - учитываем для всех items пропорционально
+          if (!metadata?.extendOrderItemId && !metadata?.settleOrderItemId) {
+            // Это первоначальный платеж за аренду - берем базовую цену тарифа
+            const baseTariff = item.tariff;
+            if (baseTariff) {
+              paidRub += baseTariff.priceRub;
+              paidMinutes += baseTariff.durationMinutes;
+            }
+          }
+          
+          // Платеж за продление этого конкретного orderItem
+          if (metadata?.extendOrderItemId === item.id) {
+            paidRub += payment.amountRub;
+            
+            // Рассчитываем оплаченное время продления
+            const tariffId = metadata.tariffId as string | undefined;
+            const quantity = parseInt(metadata.quantity as string) || 1;
+            
+            // Получаем тариф из базы, чтобы узнать durationMinutes
+            let extensionTariff = item.tariff;
+            if (tariffId && tariffId !== item.tariffId) {
+              extensionTariff = await this.tariffsService.getTariffById(tariffId);
+            }
+            
+            if (extensionTariff) {
+              paidMinutes += extensionTariff.durationMinutes * quantity;
+            }
+          }
+          
+          // Платеж за погашение задолженности этого orderItem
+          if (metadata?.settleOrderItemId === item.id) {
+            paidRub += payment.amountRub;
+            // За погашение задолженности время не добавляется, это оплата уже использованного времени
+          }
+        }
+        
+        const accruedRub = paidRub + meta.overdueRub;
+        const outstandingRub = Math.max(0, meta.overdueRub);
+        
         return {
           ...item,
           overdueMinutes: meta.overdueMinutes,
           overdueRub: meta.overdueRub,
           paidRub,
+          paidMinutes, // Общее оплаченное время
           accruedRub,
           outstandingRub,
         };
@@ -153,32 +204,18 @@ export class RentalsService {
 
     if (!expired.length) return;
 
-    // Разделяем на оплаченные и неоплаченные
-    const paidRentals = expired.filter(item => item.order.status === 'PAID');
-    const unpaidRentals = expired.filter(item => item.order.status !== 'PAID');
-
-    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Завершаем только полностью оплаченные аренды
-      if (paidRentals.length > 0) {
-        await tx.orderItem.updateMany({
-          where: { id: { in: paidRentals.map((item) => item.id) } },
-          data: { status: 'EXPIRED' },
-        });
-        await tx.locker.updateMany({
-          where: { id: { in: paidRentals.map((item) => item.lockerId) } },
-          data: { status: 'FREE' },
-        });
-      }
-
-      // Переводим неоплаченные аренды в статус OVERDUE (просроченные, но не завершенные)
-      if (unpaidRentals.length > 0) {
-        await tx.orderItem.updateMany({
-          where: { id: { in: unpaidRentals.map((item) => item.id) } },
-          data: { status: 'OVERDUE' },
-        });
-        // Ячейки остаются занятыми до ручного завершения
-      }
+    // ВАЖНО: НЕ завершаем аренду автоматически!
+    // Только переводим в статус OVERDUE для начисления задолженности
+    // Ячейка остается занятой, пользователь продолжает пользоваться
+    // Задолженность будет начисляться пока пользователь или менеджер не завершит аренду вручную
+    
+    await this.prisma.orderItem.updateMany({
+      where: { id: { in: expired.map((item) => item.id) } },
+      data: { status: 'OVERDUE' },
     });
+    
+    // Ячейки остаются OCCUPIED - пользователь может продолжать пользоваться
+    // Просто ему начисляется задолженность за сверхурочное время
   }
 
   private async calculateOverdueMeta(orderItemId: string) {

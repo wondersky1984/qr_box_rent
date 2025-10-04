@@ -495,11 +495,10 @@ const formatDuration = (ms: number) => {
 };
 
 const formatPaidTime = (rental: Rental) => {
-  if (!rental.startAt || !rental.endAt) return '';
+  // Используем paidMinutes из backend - это сумма всех оплаченных периодов
+  const totalMinutes = rental.paidMinutes || 0;
   
-  const startTime = new Date(rental.startAt).getTime();
-  const endTime = new Date(rental.endAt).getTime();
-  const totalMinutes = Math.floor((endTime - startTime) / 60000);
+  if (totalMinutes === 0) return 'не указано';
   
   if (totalMinutes < 60) {
     return `${totalMinutes} мин`;
