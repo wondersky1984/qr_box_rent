@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { PrismaModule } from './core/prisma/prisma.module';
@@ -17,7 +16,6 @@ import { TariffsModule } from './modules/tariffs/tariffs.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { LockerDriverModule } from './modules/locker-driver/locker-driver.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
-import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './modules/health/health.module';
 import { AutoAssignModule } from './modules/auto-assign/auto-assign.module';
 import { DeviceModule } from './modules/device/device.module';
@@ -58,12 +56,6 @@ import { MiddlewareModule } from './common/middleware/middleware.module';
     DeviceModule,
     SeedModule,
     MiddlewareModule,
-  ],
-  providers: [
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
-    },
   ],
 })
 export class AppModule {}
