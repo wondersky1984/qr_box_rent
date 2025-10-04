@@ -5,21 +5,14 @@ import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
 const cookieExtractor = (req: Request) => {
-  console.log('[JWT] Extracting cookie, cookies:', req.cookies);
-  console.log('[JWT] lockbox_access:', req.cookies?.['lockbox_access'] ? 'EXISTS' : 'NOT FOUND');
   if (req && req.cookies) {
-    const token = req.cookies['lockbox_access'];
-    console.log('[JWT] Extracted token:', token ? `${token.substring(0, 20)}...` : 'null');
-    return token;
+    return req.cookies['lockbox_access'];
   }
-  console.log('[JWT] No cookies found');
   return null;
 };
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  private readonly logger = new Logger(JwtStrategy.name);
-
   constructor(configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -32,8 +25,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    const user = { userId: payload.sub, role: payload.role, phone: payload.phone };
-    this.logger.log(`🔑 JWT validated! Payload: ${JSON.stringify(payload)}, Returning user: ${JSON.stringify(user)}`);
-    return user;
+    return { userId: payload.sub, role: payload.role, phone: payload.phone };
   }
 }

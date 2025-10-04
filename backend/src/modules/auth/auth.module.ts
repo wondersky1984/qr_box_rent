@@ -26,6 +26,6 @@ import { RefreshStrategy } from './strategies/refresh.strategy';
   ],
   providers: [AuthService, TelegramOtpService, JwtStrategy, RefreshStrategy],
   controllers: [AuthController, TelegramOtpController],
-  exports: [AuthService],
+  exports: [AuthService, JwtStrategy, RefreshStrategy, PassportModule],
 })
 export class AuthModule {}
