@@ -15,7 +15,7 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    this.logger.debug(`Required roles: ${JSON.stringify(requiredRoles)}`);
+    this.logger.log(`🔐 Required roles: ${JSON.stringify(requiredRoles)}`);
 
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;
@@ -24,15 +24,15 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{ user?: { role?: Role } }>();
     const role = request.user?.role as Role | undefined;
     
-    this.logger.debug(`User role: ${role}, User object: ${JSON.stringify(request.user)}`);
+    this.logger.log(`👤 User role: ${role}, User: ${JSON.stringify(request.user)}`);
     
     if (!role) {
-      this.logger.warn('No role found in request.user');
+      this.logger.warn('❌ No role found in request.user');
       return false;
     }
 
     const hasAccess = requiredRoles.includes(role);
-    this.logger.debug(`Access granted: ${hasAccess}, comparing ${role} in [${requiredRoles}]`);
+    this.logger.log(`🎯 Access: ${hasAccess}, comparing "${role}" in [${requiredRoles}]`);
     
     return hasAccess;
   }
