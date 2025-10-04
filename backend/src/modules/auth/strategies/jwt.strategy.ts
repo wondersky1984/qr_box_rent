@@ -5,9 +5,14 @@ import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
 const cookieExtractor = (req: Request) => {
+  console.log('[JWT] Extracting cookie, cookies:', req.cookies);
+  console.log('[JWT] lockbox_access:', req.cookies?.['lockbox_access'] ? 'EXISTS' : 'NOT FOUND');
   if (req && req.cookies) {
-    return req.cookies['lockbox_access'];
+    const token = req.cookies['lockbox_access'];
+    console.log('[JWT] Extracted token:', token ? `${token.substring(0, 20)}...` : 'null');
+    return token;
   }
+  console.log('[JWT] No cookies found');
   return null;
 };
 
