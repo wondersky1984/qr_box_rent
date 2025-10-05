@@ -210,3 +210,5 @@ docker compose up -d --build
 6. Задеплоить на продакшн
 
 
+
+

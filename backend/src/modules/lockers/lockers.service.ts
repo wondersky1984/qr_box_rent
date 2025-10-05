@@ -4,6 +4,7 @@ import { LockerStatus, ActorType, Prisma } from '@prisma/client';
 import dayjs from 'dayjs';
 import { LOCKER_DRIVER, LockerDriver } from '../locker-driver/locker-driver.interface';
 import { AuditService } from '../audit/audit.service';
+import { DeviceService } from '../device/device.service';
 
 @Injectable()
 export class LockersService {
@@ -11,6 +12,7 @@ export class LockersService {
     private readonly prisma: PrismaService,
     @Inject(LOCKER_DRIVER) private readonly lockerDriver: LockerDriver,
     private readonly auditService: AuditService,
+    private readonly deviceService: DeviceService,
   ) {}
 
   async getLockers(filter?: { status?: LockerStatus[]; search?: string }) {
@@ -268,7 +270,24 @@ export class LockersService {
   }
 
   async openLocker(lockerId: string, actor: { actorId?: string; actorType: ActorType; source: 'PAID' | 'ADMIN'; ip?: string; userAgent?: string }) {
-    await this.lockerDriver.open(lockerId);
+    // Получаем информацию о ячейке
+    const locker = await this.prisma.locker.findUnique({
+      where: { id: lockerId },
+    });
+
+    if (!locker) {
+      throw new NotFoundException('Locker not found');
+    }
+
+    // Если есть deviceId - создаём команду для ESP32
+    if (locker.deviceId) {
+      await this.deviceService.createOpenCommand(locker.deviceId, locker.number);
+    } else {
+      // Fallback на старый драйвер (для мока)
+      await this.lockerDriver.open(lockerId);
+    }
+
+    // Логируем открытие
     await this.auditService.createLog({
       actorType: actor.actorType,
       actorId: actor.actorId,

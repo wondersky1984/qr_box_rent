@@ -74,6 +74,12 @@ enum AuditAction {
   REPORT_VIEW
 }
 
+enum CommandStatus {
+  PENDING
+  CONFIRMED
+  EXPIRED
+}
+
 model User {
   id            String         @id @default(uuid())
   phone         String         @unique
@@ -208,4 +214,18 @@ model Settings {
   value String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DeviceCommand {
+  id            String        @id @default(uuid())
+  deviceId      String        // ESP32_001, ESP32_002, etc.
+  lockerNumber  Int           // Number of locker to open
+  command       String        // "OPEN"
+  status        CommandStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  confirmedAt   DateTime?     // When ESP32 confirmed receipt
+  expiresAt     DateTime      // Usually +30 seconds from creation
+  
+  @@index([deviceId, status])
+  @@index([status, expiresAt])
 }
